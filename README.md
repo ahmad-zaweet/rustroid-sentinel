@@ -112,7 +112,7 @@ rustroid-sentinel/
    ```bash
    cargo run --all-features -- serve
    ```
-   The application will be available at `http://localhost:8080`.
+   The application will be available at `http://localhost:8000`.
 
 ### 🐳 Running with Docker
 
@@ -125,7 +125,7 @@ rustroid-sentinel/
 2. **Build and Run**
    ```bash
    docker build -t rustroid-sentinel:latest .
-   docker run -d -p 8080:8000 --env-file .env rustroid-sentinel:latest
+   docker run -d -p 8000:8000 --env-file .env rustroid-sentinel:latest
    ```
 
 3. **Viewing Logs**
@@ -185,14 +185,6 @@ cargo test -- --nocapture
 # Generate coverage report (requires cargo-llvm-cov)
 cargo llvm-cov --html --open
 ```
-
-## 📄 API Documentation
-
-Once the application is running, interactive API documentation is available at:
-
-**[http://localhost:8080/docs](http://localhost:8080/docs)**
-
-This OpenAPI/Swagger interface provides detailed information about all endpoints, including request parameters, response schemas, and authentication requirements.
 
 ## 🤝 Contributing
 
