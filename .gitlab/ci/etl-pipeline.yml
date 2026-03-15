@@ -5,10 +5,14 @@ etl_pipeline:
   stage: run-etl-pipeline
   image: $CI_REGISTRY_IMAGE:latest
   script:
-    - echo "Starting ETL Pipeline..."
-    - rustroid-sentinel extract --days 1
-    - rustroid-sentinel transform
-    - rustroid-sentinel load
-    - rustroid-sentinel alert
+    - |
+      set -e
+      echo "Starting ETL Pipeline..."
+      rustroid-sentinel extract --days 1
+      rustroid-sentinel transform
+      rustroid-sentinel load
+      rustroid-sentinel alert
+      echo "ETL Pipeline completed successfully"
+  resource_group: etl-pipeline
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"

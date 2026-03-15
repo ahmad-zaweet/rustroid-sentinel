@@ -52,5 +52,6 @@ USER sentinel
 ENV RUST_LOG=warn
 ENV RUN_ENV=production
 
-# Entrypoint
-ENTRYPOINT ["rustroid-sentinel", "serve"]
+# Default command (can be overridden by CI/CD or docker run)
+ENTRYPOINT ["rustroid-sentinel"]
+CMD ["serve"]

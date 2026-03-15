@@ -1,15 +1,25 @@
-# Code Quality Jobs
+image: rust:$RUST_VERSION
+
+variables:
+  CARGO_INCREMENTAL: "0"
+  CARGO_TERM_COLOR: always
+
+stages:
+  - quality
 
 lint:
   stage: quality
-  image: rust:$RUST_VERSION
   script:
     - rustup component add clippy rustfmt
-    - cargo fmt --check
-    - cargo clippy -- -D warnings
+    - cargo fmt --all -- --check
+    - cargo clippy --workspace --all-targets --locked -- -D warnings
+  rules:
+    - if: $CI_PIPELINE_SOURCE != "schedule"
 
 build:
   stage: quality
-  image: rust:$RUST_VERSION
   script:
-    - cargo check --release
+    - cargo fetch
+    - cargo check --workspace --all-targets --locked
+  rules:
+    - if: $CI_PIPELINE_SOURCE != "schedule"

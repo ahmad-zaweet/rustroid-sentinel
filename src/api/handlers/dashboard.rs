@@ -261,17 +261,6 @@ mod dashboard_tests {
 
     use super::*;
     use crate::api::types::{ApiResponse, HealthResponse};
-    use crate::server::AppState;
-    use crate::settings::ServerConfig;
-    use sqlx::PgPool;
-    use std::sync::Arc;
-
-    /// Creates a test app state with a mock database pool.
-    async fn create_test_app_state() -> AppState {
-        // For unit tests, we use a mock/stub pool
-        // Integration tests use real database
-        unimplemented!("Use integration tests for handler tests with real DB")
-    }
 
     #[tokio::test]
     async fn test_health_response_structure() {

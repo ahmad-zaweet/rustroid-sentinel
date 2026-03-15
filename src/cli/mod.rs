@@ -43,15 +43,3 @@ pub mod alert;
 pub mod extract;
 pub mod load;
 pub mod transform;
-
-#[cfg(test)]
-mod tests {
-    // CLI command parsing is tested in main.rs integration tests
-    // This module focuses on command execution logic
-
-    #[test]
-    fn test_cli_module_structure() {
-        // Verify module structure
-        assert!(true);
-    }
-}
