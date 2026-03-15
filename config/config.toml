@@ -1,0 +1,111 @@
+# ------------------------------------------------------------------------------
+# Rustroid Sentinel Core Configuration
+# ------------------------------------------------------------------------------
+
+[service]
+# The name of the service, generally used for display or logging prefixes.
+name = "rustroid-sentinel"
+# The environment the service is running in (development, production)
+env = "dev"
+# The host address to bind the web server to.
+host = "0.0.0.0"
+# The port number the web server listens on.
+port = 8000
+# The log level for tracing output (debug, info, warn, error).
+log_level = "info"
+
+[database]
+# Database connection string (overridden in runtime by .env)
+url = "..."
+# Maximum connection pool size to PostgreSQL.
+max_connections = 10
+# Minimum idle connection pool size.
+min_connections = 2
+# Number of seconds before a database connection attempt times out.
+connect_timeout_seconds = 60
+
+
+
+[nasa]
+# API Key (overridden in runtime by .env)
+api_key = "..."
+# The base URL pointing to NASA's NeoWs API.
+base_url = "https://api.nasa.gov"
+# Timeout for individual HTTP requests to NASA APIs.
+timeout_seconds = 60
+# Number of connection retries on NASA API failure.
+max_retries = 3
+retry_delay_ms = 1000
+max_concurrent_requests = 5
+
+[discord]
+# Webhook URL (overridden in runtime by .env)
+webhook_url = "..."
+timeout_seconds = 10
+max_retries = 2
+
+[http]
+# The User-Agent string shipped with outgoing external API requests
+user_agent = "RustroidSentinel/1.0"
+timeout_seconds = 30
+connect_timeout_seconds = 10
+pool_idle_timeout_seconds = 90
+pool_max_idle_per_host = 10
+
+[etl]
+# Fetch interval logic (cooldown between scheduled runs)
+fetch_interval_hours = 24
+# Number of past days of data to fetch during a run
+lookback_days = 1
+# Number of future days of data to fetch during a run
+lookahead_days = 7
+# Cooldown period before alerting on the exact same asteroid event
+alert_cooldown_hours = 24
+# Records processed in a single DB persistence batch
+batch_size = 100
+
+[server]
+# Timeout for incoming client requests before Axum closes the connection.
+request_timeout_seconds = 300
+# The total number of requests permitted globally per rate limit period.
+rate_limit_requests = 2
+# The sliding window period (in seconds) for rate limits.
+rate_limit_period_seconds = 60
+
+[server.cache]
+# Enable or disable caching for API endpoints and dashboard.
+enabled = true
+# Time-to-live for cached responses in seconds (5 minutes).
+ttl_seconds = 300
+# Maximum number of responses to keep in cache.
+max_size = 100
+
+# ------------------------------------------------------------------------------
+# Prometheus/OTLP Metrics (Optional)
+# ------------------------------------------------------------------------------
+# Metrics are pushed to Grafana Cloud via OTLP and exposed at /metrics for
+# local Prometheus scraping. Configure both url (OTLP push) and query_url
+# (dashboard queries) for full functionality.
+# [prometheus]
+# # OTLP endpoint for pushing metrics
+# url = "https://otlp-gateway-prod-eu-west-2.grafana.net/otlp"
+# # Prometheus Query API for dashboard
+# query_url = "https://prometheus-prod-eu-west-2.grafana.net/api/prom/api/v1/query"
+# # Grafana Cloud credentials
+# username = "your-instance-id"
+# token = "your-api-token"
+# # Push interval in seconds
+# interval_seconds = 60
+
+# ------------------------------------------------------------------------------
+# Grafana Cloud Prometheus Querying (Optional)
+# ------------------------------------------------------------------------------
+# Dedicated configuration for querying Grafana Cloud Prometheus to display
+# metrics on the dashboard. Uses separate credentials from OTLP push config.
+# [grafana_cloud_prometheus]
+# # Grafana Cloud Prometheus Query API URL
+# url = "https://prometheus-prod-eu-west-2.grafana.net/api/prom/api/v1/query"
+# # Grafana Cloud instance ID (from Grafana Cloud portal)
+# instance_id = "your-instance-id"
+# # Grafana Cloud API token with metrics:read permission
+# token = "your-api-token"

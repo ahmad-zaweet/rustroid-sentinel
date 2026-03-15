@@ -1,0 +1,35 @@
+<header class="glass-header sticky top-0 z-50 backdrop-blur-glass">
+    <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+        <div class="flex items-center gap-4">
+            <div
+                class="w-12 h-12 rounded-2xl glass-card flex items-center justify-center animate-float"
+            >
+                <i
+                    data-lucide="satellite"
+                    class="w-6 h-6 text-nebula-purple"
+                ></i>
+            </div>
+            <div>
+                <h1
+                    class="text-xl font-heading font-semibold gradient-text tracking-tight"
+                >
+                    Rustroid Sentinel
+                </h1>
+                <p class="text-xs text-text-muted font-light">
+                    Asteroid Monitoring System
+                </p>
+            </div>
+        </div>
+        <div
+            class="flex items-center gap-3 px-5 py-2.5 glass-card rounded-full status-badge status-live"
+        >
+            <span
+                class="w-2.5 h-2.5 rounded-full status-dot status-dot-live"
+                id="connection-status"
+            ></span>
+            <span class="text-sm font-semibold" id="status-text"
+                >Connecting...</span
+            >
+        </div>
+    </div>
+</header>

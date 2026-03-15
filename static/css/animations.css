@@ -1,0 +1,248 @@
+/* ============================================
+   Rustroid Sentinel - Animation System
+   Aceternity-inspired + Apple Glassmorphism
+   ============================================ */
+
+/* Page Load Fade-Slide-Up Animation */
+@keyframes fadeSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(24px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fade-slide-up {
+    animation: fadeSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Staggered entrance delays */
+.delay-0 { animation-delay: 0ms; }
+.delay-75 { animation-delay: 75ms; }
+.delay-100 { animation-delay: 100ms; }
+.delay-150 { animation-delay: 150ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+.delay-500 { animation-delay: 500ms; }
+
+/* Gradient Animation for Text */
+@keyframes gradientShift {
+    0%, 100% {
+        background-size: 200% 200%;
+        background-position: left center;
+    }
+    50% {
+        background-size: 200% 200%;
+        background-position: right center;
+    }
+}
+
+.animate-gradient {
+    background-size: 200% 200%;
+    animation: gradientShift 3s ease infinite;
+}
+
+/* Pulse Glow Animation */
+@keyframes pulseGlow {
+    0%, 100% {
+        opacity: 1;
+        box-shadow: 0 0 12px rgba(74, 222, 128, 0.4);
+    }
+    50% {
+        opacity: 0.8;
+        box-shadow: 0 0 24px rgba(74, 222, 128, 0.6);
+    }
+}
+
+.animate-pulse-glow {
+    animation: pulseGlow 2s ease-in-out infinite;
+}
+
+/* Shimmer Effect for Loading States */
+@keyframes shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+.animate-shimmer {
+    background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.03) 0%,
+        rgba(255, 255, 255, 0.08) 50%,
+        rgba(255, 255, 255, 0.03) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2s linear infinite;
+}
+
+/* Skeleton Loading Animation */
+.skeleton {
+    background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.05) 0%,
+        rgba(255, 255, 255, 0.1) 50%,
+        rgba(255, 255, 255, 0.05) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+    border-radius: 8px;
+}
+
+/* Float Animation for Icons */
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-4px);
+    }
+}
+
+.animate-float {
+    animation: float 3s ease-in-out infinite;
+}
+
+/* Glow Pulse for Status Indicators */
+@keyframes glowPulse {
+    0%, 100% {
+        box-shadow: 0 0 8px currentColor;
+        opacity: 1;
+    }
+    50% {
+        box-shadow: 0 0 20px currentColor;
+        opacity: 0.7;
+    }
+}
+
+/* SSE Update Flash */
+@keyframes updateFlash {
+    0%, 100% {
+        background-color: transparent;
+    }
+    50% {
+        background-color: rgba(167, 139, 250, 0.15);
+    }
+}
+
+.animate-update-flash {
+    animation: updateFlash 0.6s ease-out;
+}
+
+/* Spin with Glow */
+@keyframes spinGlow {
+    0% {
+        transform: rotate(0deg);
+        box-shadow: 0 0 8px rgba(167, 139, 250, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(167, 139, 250, 0.6);
+    }
+    100% {
+        transform: rotate(360deg);
+        box-shadow: 0 0 8px rgba(167, 139, 250, 0.4);
+    }
+}
+
+.animate-spin-glow {
+    animation: spinGlow 1.5s linear infinite;
+}
+
+/* Fade In Animation */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.4s ease-out forwards;
+}
+
+/* Scale In Animation */
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.animate-scale-in {
+    animation: scaleIn 0.3s ease-out forwards;
+}
+
+/* Slide In Right */
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.animate-slide-in-right {
+    animation: slideInRight 0.4s ease-out forwards;
+}
+
+/* ============================================
+   Reduced Motion Support (WCAG Compliance)
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+
+    .animate-fade-slide-up,
+    .animate-gradient,
+    .animate-pulse-glow,
+    .animate-shimmer,
+    .animate-float,
+    .animate-spin-glow,
+    .animate-update-flash,
+    .animate-scale-in,
+    .animate-slide-in-right {
+        animation: none !important;
+    }
+}
+
+/* ============================================
+   Print Styles
+   ============================================ */
+@media print {
+    .space-bg,
+    .stars,
+    .glass-card,
+    .btn-glass {
+        background: white !important;
+        backdrop-filter: none !important;
+        box-shadow: none !important;
+        color: black !important;
+    }
+
+    * {
+        animation: none !important;
+        transition: none !important;
+    }
+}

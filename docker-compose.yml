@@ -1,0 +1,31 @@
+services:
+  rustroid-sentinel-web-server:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - SERVICE__DATABASE__URL=postgres://postgres:password@rustroid-sentinel-db:5432/rustroid
+      - SERVICE_NASA__API_KEY=DEMO_KEY
+      - RUN_ENV=development
+    depends_on:
+      rustroid-sentinel-db:
+        condition: service_healthy
+
+  rustroid-sentinel-db:
+    image: postgres:17-alpine
+    environment:
+      - POSTGRES_DB=rustroid
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

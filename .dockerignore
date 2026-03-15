@@ -1,0 +1,11 @@
+.git
+.gitignore
+.env
+.cargo
+target
+brain
+docs
+*.md
+Dockerfile
+.gitlab-ci.yml
+.gitlab

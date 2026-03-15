@@ -1,0 +1,15 @@
+# Code Quality Jobs
+
+lint:
+  stage: quality
+  image: rust:$RUST_VERSION
+  script:
+    - rustup component add clippy rustfmt
+    - cargo fmt --check
+    - cargo clippy -- -D warnings
+
+build:
+  stage: quality
+  image: rust:$RUST_VERSION
+  script:
+    - cargo check --release

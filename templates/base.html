@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>{% block title %}Rustroid Sentinel{% endblock %}</title>
+
+        <!-- Google Fonts -->
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Titillium+Web:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&display=swap"
+            rel="stylesheet"
+        />
+
+        <!-- Tailwind CSS -->
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="/js/tailwind.config.js"></script>
+
+        <!-- Custom CSS -->
+        <link rel="stylesheet" href="/css/styles.css" />
+        <link rel="stylesheet" href="/css/animations.css" />
+        <link rel="stylesheet" href="/css/spotlight.css" />
+    </head>
+
+    <body
+        class="text-text-primary min-h-screen relative overflow-x-hidden font-body"
+    >
+        <!-- Space Background -->
+        <div class="space-bg"></div>
+        <div class="stars" id="stars"></div>
+
+        {% include "partials/header.html" %}
+
+        <main
+            class="container mx-auto px-6 py-8 space-y-8 animate-fade-slide-up"
+        >
+            {% block content %}{% endblock %}
+        </main>
+
+        {% include "partials/footer.html" %}
+
+        <!-- Chart.js -->
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
+
+        <!-- Lucide Icons -->
+        <script src="https://unpkg.com/lucide@latest"></script>
+
+        <!-- HTMX for partial page updates -->
+        <script src="https://unpkg.com/htmx.org@2.0.0"></script>
+
+        <script src="/js/dashboard.js"></script>
+        <script src="/js/interactions.js"></script>
+    </body>
+</html>

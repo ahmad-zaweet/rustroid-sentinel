@@ -1,0 +1,112 @@
+<!-- Approaches Table -->
+<div class="glass-card rounded-3xl overflow-hidden">
+    <div class="p-8 border-b border-white/10">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-nebula-cyan/20 to-nebula-blue/20 backdrop-blur-sm border border-white/10 flex items-center justify-center">
+                    <i data-lucide="telescope" class="w-5 h-5 text-nebula-cyan"></i>
+                </div>
+                <div>
+                    <h2 class="text-xl font-heading font-semibold text-text-primary">Close Approaches</h2>
+                    <p class="text-sm text-text-muted font-light mt-0.5">Recent asteroid flyby data</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <select id="hazard-filter" name="hazard_class" hx-get="/dashboard/table" hx-trigger="change" hx-target="#approaches-container" hx-swap="innerHTML" class="btn-glass px-4 py-2 rounded-xl text-sm font-medium bg-transparent text-text-secondary cursor-pointer" aria-label="Filter">
+                    <option value="">All Hazards</option>
+                    <option value="Critical" {% if hazard_selected == "Critical" %}selected{% endif %}>Critical</option>
+                    <option value="High" {% if hazard_selected == "High" %}selected{% endif %}>High</option>
+                    <option value="Medium" {% if hazard_selected == "Medium" %}selected{% endif %}>Medium</option>
+                    <option value="Low" {% if hazard_selected == "Low" %}selected{% endif %}>Low</option>
+                </select>
+                <input type="date" id="start-date" name="start_date" value="{{ start_date_value }}" hx-get="/dashboard/table" hx-trigger="change" hx-target="#approaches-container" hx-swap="innerHTML" hx-params="not empty" class="btn-glass px-4 py-2 rounded-xl text-sm font-medium bg-transparent text-text-secondary" aria-label="Start date"/>
+                <input type="date" id="end-date" name="end_date" value="{{ end_date_value }}" hx-get="/dashboard/table" hx-trigger="change" hx-target="#approaches-container" hx-swap="innerHTML" hx-params="not empty" class="btn-glass px-4 py-2 rounded-xl text-sm font-medium bg-transparent text-text-secondary" aria-label="End date"/>
+                <button hx-get="/dashboard/table" hx-target="#approaches-container" hx-swap="innerHTML" class="btn-glass px-4 py-2 rounded-xl text-sm font-medium" aria-label="Reset filters">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full" role="table">
+            <thead>
+                <tr class="border-b border-white/10">
+                    <th class="px-8 py-4 text-left text-xs font-semibold text-text-secondary uppercase tracking-widest" scope="col">Asteroid</th>
+                    <th class="px-8 py-4 text-left text-xs font-semibold text-text-secondary uppercase tracking-widest" scope="col">Close Approach</th>
+                    <th class="px-8 py-4 text-left text-xs font-semibold text-text-secondary uppercase tracking-widest" scope="col">Velocity (km/h)</th>
+                    <th class="px-8 py-4 text-left text-xs font-semibold text-text-secondary uppercase tracking-widest" scope="col">Miss Distance (km)</th>
+                    <th class="px-8 py-4 text-left text-xs font-semibold text-text-secondary uppercase tracking-widest" scope="col">Hazard Class</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-white/10">
+                {% if approaches.is_empty() %}
+                <tr>
+                    <td colspan="5" class="px-8 py-16 text-center">
+                        <div class="flex flex-col items-center gap-3">
+                            <i data-lucide="telescope" class="w-12 h-12 text-text-muted"></i>
+                            <p class="text-text-secondary font-medium">No approach data available</p>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                {% for approach in approaches %}
+                <tr class="table-row group border-b border-white/5 hover:bg-white/5 transition-all duration-300">
+                    <td class="px-8 py-5">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-nebula-purple/20 to-nebula-blue/20 backdrop-blur-sm border border-white/10 flex items-center justify-center">
+                                <i data-lucide="circle-dot" class="w-4 h-4 text-nebula-purple"></i>
+                            </div>
+                            <span class="font-heading font-semibold text-text-primary group-hover:text-nebula-purple transition-colors">{{ approach.asteroid_name }}</span>
+                        </div>
+                    </td>
+                    <td class="px-8 py-5 text-text-secondary font-body">{{ approach.close_approach_date.format("%b %e, %Y") }}</td>
+                    <td class="px-8 py-5 font-mono text-sm text-nebula-cyan font-bold">{{ format!("{:.0}", approach.velocity_km_per_h / 1000.0) }}K km/h</td>
+                    <td class="px-8 py-5 font-mono text-sm text-nebula-blue font-bold">{{ format!("{:.2}", approach.miss_distance_km / 1000000.0) }}M km</td>
+                    <td class="px-8 py-5">
+                        {% if approach.hazard_classification == "Critical" %}
+                        <span class="hazard-badge hazard-critical-badge"><span class="hazard-dot hazard-critical-dot"></span>{{ approach.hazard_classification }}</span>
+                        {% else if approach.hazard_classification == "High" %}
+                        <span class="hazard-badge hazard-high-badge"><span class="hazard-dot hazard-high-dot"></span>{{ approach.hazard_classification }}</span>
+                        {% else if approach.hazard_classification == "Medium" %}
+                        <span class="hazard-badge hazard-medium-badge"><span class="hazard-dot hazard-medium-dot"></span>{{ approach.hazard_classification }}</span>
+                        {% else %}
+                        <span class="hazard-badge hazard-low-badge"><span class="hazard-dot hazard-low-dot"></span>{{ approach.hazard_classification }}</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+    <div class="p-6 border-t border-white/10">
+        <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="text-sm text-text-tertiary font-medium">
+                Showing <span class="text-text-secondary font-heading font-semibold">{{ showing_start }}</span> to <span class="text-text-secondary font-heading font-semibold">{{ showing_end }}</span> of <span class="text-text-secondary font-heading font-semibold">{{ total_items }}</span> results
+            </div>
+            <div class="flex items-center gap-2">
+                <button hx-get="/dashboard/table?page=1{{ query_string }}" hx-target="#approaches-container" hx-swap="innerHTML" class="btn-glass px-4 py-2 rounded-xl text-sm font-medium" id="btn-first" aria-label="First page" {% if is_first_page %}disabled{% endif %}>
+                    <i data-lucide="chevrons-left" class="w-4 h-4"></i>
+                </button>
+                <button hx-get="/dashboard/table?page={{ current_page - 1 }}{{ query_string }}" hx-target="#approaches-container" hx-swap="innerHTML" class="btn-glass px-4 py-2 rounded-xl text-sm font-medium" id="btn-prev" aria-label="Previous page" {% if is_first_page %}disabled{% endif %}>
+                    <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                </button>
+                <div class="flex items-center gap-1">
+                    {% for page in page_range %}
+                    {% if page.is_current %}
+                    <span class="px-4 py-2 rounded-xl text-sm font-semibold bg-nebula-purple/20 text-nebula-purple border border-nebula-purple/30">{{ page.number }}</span>
+                    {% else %}
+                    <button hx-get="/dashboard/table?page={{ page.number }}{{ query_string }}" hx-target="#approaches-container" hx-swap="innerHTML" class="btn-glass px-4 py-2 rounded-xl text-sm font-medium">{{ page.number }}</button>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                <button hx-get="/dashboard/table?page={{ current_page + 1 }}{{ query_string }}" hx-target="#approaches-container" hx-swap="innerHTML" class="btn-glass px-4 py-2 rounded-xl text-sm font-medium" id="btn-next" aria-label="Next page" {% if is_last_page %}disabled{% endif %}>
+                    <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                </button>
+                <button hx-get="/dashboard/table?page={{ total_pages }}{{ query_string }}" hx-target="#approaches-container" hx-swap="innerHTML" class="btn-glass px-4 py-2 rounded-xl text-sm font-medium" id="btn-last" aria-label="Last page" {% if is_last_page %}disabled{% endif %}>
+                    <i data-lucide="chevrons-right" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

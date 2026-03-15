@@ -1,0 +1,9 @@
+# Security Jobs
+
+audit:
+  stage: security
+  image: rust:$RUST_VERSION
+  script:
+    - cargo install cargo-audit --locked
+    - cargo audit
+  allow_failure: true

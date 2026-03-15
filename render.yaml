@@ -1,0 +1,53 @@
+# Render Deployment Configuration
+# https://render.com/docs/yaml-spec
+
+services:
+  # Web Service - Rustroid Sentinel API
+  - type: web
+    name: rustroid-sentinel
+    env: rust
+    region: oregon
+    plan: starter
+    branch: main
+    buildCommand: cargo build --release
+    startCommand: ./target/release/rustroid-sentinel
+    healthCheckPath: /api/health
+    numInstances: 1
+    envVars:
+      - key: RUST_LOG
+        value: info
+      - key: RUN_ENV
+        value: production
+      - key: SERVICE__HOST
+        value: 0.0.0.0
+      - key: SERVICE__PORT
+        value: 8000
+      - key: SERVICE__DATABASE__URL
+        fromDatabase:
+          name: rustroid-db
+          property: connectionString
+      - key: SERVICE__NASA__API_KEY
+        sync: false
+        required: true
+      - key: SERVICE__SERVER__REQUEST_TIMEOUT_SECONDS
+        value: "30"
+      - key: SERVICE__SERVER__RATE_LIMIT_REQUESTS
+        value: "100"
+      - key: SERVICE__SERVER__RATE_LIMIT_PERIOD_SECONDS
+        value: "60"
+    disk:
+      name: data
+      mountPath: /app/data
+      sizeGB: 1
+
+  # PostgreSQL Database
+  - type: pserv
+    name: rustroid-db
+    databaseName: rustroid
+    databaseUser: rustroid
+    plan: starter
+    region: oregon
+    ipAllowList:
+      - source: 0.0.0.0/0
+        description: Allow all (app access)
+    diskSizeGB: 10

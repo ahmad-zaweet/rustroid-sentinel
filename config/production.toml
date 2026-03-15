@@ -1,0 +1,3 @@
+[service]
+log_level = "warn"
+
