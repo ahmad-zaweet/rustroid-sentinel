@@ -89,9 +89,7 @@ pub fn build_router(state: AppState, timeout: Duration) -> Router {
             helmet
                 .into_layer()
                 .map_err(|e| {
-                    std::io::Error::other(
-                        format!("Failed to initialize Axum-Helmet layer: {}", e),
-                    )
+                    std::io::Error::other(format!("Failed to initialize Axum-Helmet layer: {}", e))
                 })
                 .expect("Failed to initialize Helmet layer"),
         )

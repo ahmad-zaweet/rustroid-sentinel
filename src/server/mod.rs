@@ -35,11 +35,7 @@ pub async fn run_server(
         &service_config.env,
         &service_config.name,
     )
-    .map_err(|e| {
-        std::io::Error::other(
-            format!("Metrics initialization failed: {}", e),
-        )
-    })?;
+    .map_err(|e| std::io::Error::other(format!("Metrics initialization failed: {}", e)))?;
 
     let addr: SocketAddr = format!("{}:{}", service_config.host, service_config.port)
         .parse()
