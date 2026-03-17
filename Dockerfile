@@ -31,7 +31,7 @@ COPY src ./src
 COPY Cargo.toml ./
 
 # Build the application
-RUN cargo build --release --locked --features "api,alerting,metrics,etl"
+RUN cargo build --release --features "api,alerting,metrics,etl"
 
 # Strip binary for smaller size
 RUN strip target/release/rustroid-sentinel
