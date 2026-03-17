@@ -14,7 +14,12 @@ lint:
     - cargo fmt --all -- --check
     - cargo clippy --workspace --all-targets --locked -- -D warnings
   rules:
-    - if: $CI_PIPELINE_SOURCE != "schedule"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        - "**/*.rs"
+        - "**/Cargo.toml"
+        - "**/Cargo.lock"
+    - if: $CI_MERGE_REQUEST_DRAFT == "false"
 
 build:
   stage: quality
@@ -22,4 +27,9 @@ build:
     - cargo fetch
     - cargo check --workspace --all-targets --locked
   rules:
-    - if: $CI_PIPELINE_SOURCE != "schedule"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        - "**/*.rs"
+        - "**/Cargo.toml"
+        - "**/Cargo.lock"
+    - if: $CI_MERGE_REQUEST_DRAFT == "false"

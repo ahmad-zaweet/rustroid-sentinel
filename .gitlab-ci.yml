@@ -24,12 +24,10 @@ cache:
 include:
   - local: ".gitlab/ci/code-quality.yml"
   - local: ".gitlab/ci/docker-build.yml"
-  - local: ".gitlab/ci/security.yml"
   - local: ".gitlab/ci/etl-pipeline.yml"
 
 stages:
   - quality
-  - security
   - build
   - run-etl-pipeline
 

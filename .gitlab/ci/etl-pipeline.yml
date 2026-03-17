@@ -4,15 +4,17 @@
 etl_pipeline:
   stage: run-etl-pipeline
   image: $CI_REGISTRY_IMAGE:latest
+  before_script:
+      - apk add --no-cache bash  # Ensure bash is available
   script:
-    - |
-      set -e
-      echo "Starting ETL Pipeline..."
-      rustroid-sentinel extract --days 1
-      rustroid-sentinel transform
-      rustroid-sentinel load
-      rustroid-sentinel alert
-      echo "ETL Pipeline completed successfully"
+    - rustroid-sentinel --help
+    - set -e
+    - echo "Starting ETL Pipeline..."
+    - rustroid-sentinel extract --days 1
+    - rustroid-sentinel transform
+    - rustroid-sentinel load
+    - rustroid-sentinel alert
+    - echo "ETL Pipeline completed successfully"
   resource_group: etl-pipeline
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"

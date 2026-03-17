@@ -2,9 +2,6 @@ FROM rust:1.94.0-alpine3.23 AS builder
 
 WORKDIR /app
 
-# Install build dependencies
-RUN apk update && apk upgrade
-
 # Copy manifests first for caching
 COPY Cargo.toml Cargo.lock ./
 
@@ -18,7 +15,7 @@ COPY . .
 
 # Build the application
 RUN touch src/main.rs
-RUN cargo build --release
+RUN cargo build --release --features "api,alerting,metrics,etl
 
 
 FROM alpine:3.23
@@ -26,7 +23,7 @@ FROM alpine:3.23
 WORKDIR /app
 
 # Install runtime dependencies
-RUN apk update && apk upgrade && apk add ca-certificates
+RUN add --no-cache ca-certificates
 
 # Copy the binary
 COPY --from=builder /app/target/release/rustroid-sentinel /usr/local/bin/rustroid-sentinel
