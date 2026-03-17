@@ -26,9 +26,13 @@ COPY --from=planner /app/recipe.json ./recipe.json
 # Cook dependencies only (this layer is cached by buildx)
 RUN cargo chef cook --release --recipe-path recipe.json --features "api,alerting,metrics,etl"
 
-# Copy only necessary source files (not tests, examples, docs)
+# Copy source code and required assets for compile-time includes
 COPY src ./src
 COPY Cargo.toml ./
+COPY templates ./templates
+COPY migrations ./migrations
+COPY config ./config
+COPY static ./static
 
 # Build the application
 RUN cargo build --release --features "api,alerting,metrics,etl"
