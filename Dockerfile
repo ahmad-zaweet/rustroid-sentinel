@@ -23,7 +23,7 @@ FROM alpine:3.23
 WORKDIR /app
 
 # Install runtime dependencies
-RUN add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates
 
 # Copy the binary
 COPY --from=builder /app/target/release/rustroid-sentinel /usr/local/bin/rustroid-sentinel
