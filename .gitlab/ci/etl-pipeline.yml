@@ -5,10 +5,9 @@ etl_pipeline:
     entrypoint: [""] 
 
   script:
-    - rustroid-sentinel --help
     - set -e
     - echo "Starting ETL Pipeline..."
-    - rustroid-sentinel extract --days 1
+    - rustroid-sentinel extract
     - rustroid-sentinel transform
     - rustroid-sentinel load
     - rustroid-sentinel alert
