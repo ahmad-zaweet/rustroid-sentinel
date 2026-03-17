@@ -1,11 +1,9 @@
-# Scheduled ETL Jobs
-# Configure these variables in GitLab Schedules
-
 etl_pipeline:
   stage: run-etl-pipeline
-  image: $CI_REGISTRY_IMAGE:latest
-  before_script:
-      - apk add --no-cache bash  # Ensure bash is available
+  image:
+    name: $CI_REGISTRY_IMAGE:latest
+    entrypoint: [""] 
+
   script:
     - rustroid-sentinel --help
     - set -e
@@ -15,6 +13,8 @@ etl_pipeline:
     - rustroid-sentinel load
     - rustroid-sentinel alert
     - echo "ETL Pipeline completed successfully"
+
   resource_group: etl-pipeline
+
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
