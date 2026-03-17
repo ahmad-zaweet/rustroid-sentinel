@@ -1,11 +1,37 @@
+# Git
 .git
 .gitignore
+.gitattributes
+
+# IDE
+.vscode
+.zed
+
+# Environment
 .env
+.env.example
+
+# Build artifacts (regenerated in container)
 .cargo
 target
-brain
+
+# Documentation
 docs
 *.md
-Dockerfile
-.gitlab-ci.yml
+
+# CI/CD (not needed in runtime image)
 .gitlab
+.gitlab-ci.yml
+.pre-commit-config.yaml
+deny.toml
+render.yaml
+
+# Development files
+Dockerfile
+docker-compose.yml
+
+# Test/data directories (not copied to image)
+tests
+examples
+assets
+data
