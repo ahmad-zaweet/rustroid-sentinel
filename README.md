@@ -2,7 +2,7 @@
 
 # Rustroid Sentinel
 
-[![pipeline status badge]](#)
+[![pipeline status](https://gitlab.com/AhmadZaweet/rustroid-sentinel/badges/main/pipeline.svg)](https://gitlab.com/AhmadZaweet/rustroid-sentinel/-/commits/main)
 
 ![Rust](https://img.shields.io/badge/rust-1.85%2B-orange.svg?style=for-the-badge&logo=rust&logoColor=white)
 ![Axum](https://img.shields.io/badge/axum-%23E0234E.svg?style=for-the-badge)

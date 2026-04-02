@@ -19,6 +19,7 @@ lint:
         - "*.rs"
         - "Cargo.toml"
         - "Cargo.lock"
+    - when: never
 
 build:
   stage: quality
@@ -31,3 +32,4 @@ build:
         - "*.rs"
         - "Cargo.toml"
         - "Cargo.lock"
+    - when: never
