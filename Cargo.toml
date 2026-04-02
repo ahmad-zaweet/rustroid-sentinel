@@ -19,6 +19,7 @@ tokio = { version = "1.50.*", features = [
     "signal",
     "time",
     "sync",
+    "fs",
 ] }
 tower = { version = "0.5.*", features = [
     "limit",
@@ -56,9 +57,13 @@ reqwest = { version = "0.13.*", default-features = false, features = [
     "gzip",
     "http2",
     "rustls",
+    "stream"
 ] }
 reqwest-middleware = "0.5.*"
 reqwest-retry = "0.9.*"
+
+# Stream utilities
+futures-util = "0.3.*"
 
 # Configuration management
 config = { version = "0.15.*", features = [

@@ -19,11 +19,6 @@ lint:
         - "*.rs"
         - "Cargo.toml"
         - "Cargo.lock"
-    - if: $CI_MERGE_REQUEST_DRAFT == "false"
-      changes:
-        - "*.rs"
-        - "Cargo.toml"
-        - "Cargo.lock"
 
 build:
   stage: quality
@@ -32,11 +27,6 @@ build:
     - cargo check --workspace --all-targets --locked
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-      changes:
-        - "*.rs"
-        - "Cargo.toml"
-        - "Cargo.lock"
-    - if: $CI_MERGE_REQUEST_DRAFT == "false"
       changes:
         - "*.rs"
         - "Cargo.toml"

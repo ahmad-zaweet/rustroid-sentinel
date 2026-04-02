@@ -7,11 +7,13 @@ use crate::api::client::SharedHttpClient;
 use crate::nasa::asteroid_neows::responses::{NearEarthObject, NeoFeed};
 use crate::{nasa::error::NasaApiError, settings::NasaConfig};
 use chrono::NaiveDate;
+use futures_util::stream::StreamExt;
 use reqwest::Url;
-use tracing::{debug, error, instrument, warn};
-
 use std::sync::Arc;
+use tokio::fs::File;
+use tokio::io::AsyncWriteExt;
 use tokio::sync::Semaphore;
+use tracing::{debug, error, instrument, warn};
 
 /// A client for the NASA NeoWs (Near Earth Object Web Service) API.
 ///
@@ -137,7 +139,28 @@ impl NeoWsApi {
 
             return Err(NasaApiError::ApiError(error_body));
         }
-        let feed = response.json::<NeoFeed>().await?;
+
+        // Stream the response body to a temporary file to avoid loading large responses into memory
+        let temp_path = std::env::temp_dir().join(format!(
+            "neows_feed_{}_{}.json",
+            start_date_str, end_date_str
+        ));
+        let mut file = File::create(&temp_path).await?;
+
+        let mut stream = response.bytes_stream();
+        while let Some(chunk) = stream.next().await {
+            let chunk = chunk.map_err(|e| NasaApiError::HttpRequest(e.into()))?;
+            file.write_all(&chunk).await?;
+        }
+        file.flush().await?;
+        drop(file);
+
+        // Deserialize directly from the file using streaming JSON parser
+        let feed = serde_json::from_reader::<_, NeoFeed>(std::fs::File::open(&temp_path)?)?;
+
+        // Clean up the temporary file
+        let _ = tokio::fs::remove_file(&temp_path).await;
+
         debug!(
             element_count = feed.element_count,
             "Successfully fetched asteroid feed"

@@ -1,7 +1,7 @@
 docker_build:
   rules:
-    - if: $CI_PIPELINE_SOURCE != "schedule" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - changes:
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      changes:
         - Cargo.toml
         - "src/**/*"
         - "templates/**/*"
@@ -12,7 +12,6 @@ docker_build:
         - Dockerfile
         - .dockerignore
         - "tests/**/*"
-
   stage: build
   image: docker:29.3.0-alpine3.23
   services:

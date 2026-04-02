@@ -14,6 +14,8 @@ use thiserror::Error;
 /// * `HttpRequest` - Network-level failures (timeout, connection refused, etc.)
 /// * `Deserialization` - Response body couldn't be parsed
 /// * `ApiError` - API returned an error status code
+/// * `Io` - File I/O errors
+/// * `Json` - JSON parsing errors
 #[derive(Error, Debug)]
 pub enum NasaApiError {
     /// An error occurred during the HTTP request or connection phase.
@@ -35,6 +37,14 @@ pub enum NasaApiError {
     /// Contains the error body returned by the API for debugging.
     #[error("API returned an error: {0}")]
     ApiError(String),
+
+    /// An I/O error occurred while reading or writing data.
+    #[error("I/O error: {0}")]
+    Io(#[from] std::io::Error),
+
+    /// A JSON parsing error occurred.
+    #[error("JSON parsing error: {0}")]
+    Json(#[from] serde_json::Error),
 }
 
 #[cfg(test)]

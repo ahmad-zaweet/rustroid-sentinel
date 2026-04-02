@@ -1,10 +1,3 @@
-workflow:
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule"
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_COMMIT_TAG
-
 variables:
   RUST_VERSION: "1.94.0-alpine3.23"
   DOCKER_VERSION: "29.1.3"
@@ -30,4 +23,3 @@ stages:
   - quality
   - build
   - run-etl-pipeline
-
