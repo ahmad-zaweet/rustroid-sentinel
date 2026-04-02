@@ -1,6 +1,18 @@
 docker_build:
   rules:
-    - if: $CI_PIPELINE_SOURCE != "schedule"
+    - if: $CI_PIPELINE_SOURCE != "schedule" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - changes:
+        - Cargo.toml
+        - "src/**/*"
+        - "templates/**/*"
+        - "migrations/**/*"
+        - "static/**/*"
+        - "config/**/*"
+        - Cargo.lock
+        - Dockerfile
+        - .dockerignore
+        - "tests/**/*"
+
   stage: build
   image: docker:29.3.0-alpine3.23
   services:
@@ -20,4 +32,3 @@ docker_build:
         --tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA} \
         --push \
         .
-  
