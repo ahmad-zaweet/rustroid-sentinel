@@ -7,9 +7,6 @@ compilation-check:
     - cargo check --workspace --all-targets --locked
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-      changes:
-        - "*.rs"
-        - "*.html"
 
 formatting-check:
   stage: quality
@@ -19,5 +16,3 @@ formatting-check:
     - cargo clippy --workspace --all-targets --locked -- -D warnings
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-      changes:
-        - "*.rs"
