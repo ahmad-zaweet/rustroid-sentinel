@@ -1,5 +1,11 @@
 [package]
 name = "rustroid-sentinel"
+description = "A high-performance backend system for extracting and analyzing NASA near-Earth object (NEO) data with real-time alerting, observability, and REST API capabilities"
+authors = ["Ahmad Zaweet <ahmad.zaweet@gmail.com>"]
+readme = "README.md"
+keywords = ["nasa", "asteroid", "etl", "observability", "api"]
+categories = ["science", "web-programming::http-server", "database-implementations"]
+repository = "https://gitlab.com/AhmadZaweet/rustroid-sentinel"
 version = "1.0.0"
 edition = "2024"
 
