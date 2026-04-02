@@ -11,7 +11,9 @@ pub mod velocity;
 
 // Re-export handlers for backward compatibility
 pub use approaches::approaches;
-pub use dashboard::{dashboard_table, format_number, render_dashboard};
+pub use dashboard::{
+    dashboard_table, format_number, refresh_metrics, refresh_velocity_chart, render_dashboard,
+};
 pub use etl_runs::{dashboard_etl_runs, etl_runs};
 pub use health::health;
 pub use stats::stats;

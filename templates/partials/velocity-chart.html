@@ -1,0 +1,22 @@
+<!-- Velocity Chart - SSR Partial -->
+<!-- Returns the container for HTMX outerHTML swap + OOB timestamp update + OOB timeline buttons -->
+<div id="velocity-chart-container" class="hidden">
+    <div
+        id="velocity-chart-data"
+        data-labels='[{% for point in velocity_data %}"{{ point.date.format("%b %d") }}"{% if !loop.last %}, {% endif %}{% endfor %}]'
+        data-values="[{% for point in velocity_data %}{{ point.velocity_km_per_h }}{% if !loop.last %}, {% endif %}{% endfor %}]"
+        data-period="{{ period }}"
+    ></div>
+</div>
+<!-- Out-of-band swap for the visible timestamp -->
+<div
+    id="last-updated"
+    hx-swap-oob="true"
+    class="text-text-secondary font-semibold"
+>
+    {{ last_updated }}
+</div>
+<!-- Out-of-band swap for timeline buttons with active state -->
+<div hx-swap-oob="true" id="timeline-buttons-container">
+    {% include "partials/timeline-buttons.html" %}
+</div>

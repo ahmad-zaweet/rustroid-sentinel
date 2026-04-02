@@ -4,7 +4,7 @@
 //!
 //! This module contains Askama templates for server-side rendered (SSR) HTML pages.
 
-use crate::api::types::{ApproachRecord, EtlRunRecord};
+use crate::api::types::{ApproachRecord, EtlRunRecord, VelocityDataPoint};
 use askama::Template;
 use axum::{
     http::StatusCode,
@@ -25,8 +25,14 @@ pub struct DashboardTemplate {
     pub current_page: u32,
     pub total_pages: u32,
     pub page_size: u32,
-    /// Velocity data for the chart as JSON string.
+    /// Velocity data for the chart as JSON string (for JavaScript).
     pub velocity_data_json: String,
+    /// Velocity data for the chart as Vec (for SSR template iteration).
+    pub velocity_data: Vec<VelocityDataPoint>,
+    /// Last updated timestamp for the dashboard.
+    pub last_updated: String,
+    /// Selected time period for the velocity chart (for active button state).
+    pub period: String,
 }
 
 impl IntoResponse for DashboardTemplate {
@@ -92,6 +98,52 @@ pub struct EtlRunsTemplate {
 }
 
 impl IntoResponse for EtlRunsTemplate {
+    fn into_response(self) -> Response {
+        match self.render() {
+            Ok(html) => Html(html).into_response(),
+            Err(err) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to render template: {}", err),
+            )
+                .into_response(),
+        }
+    }
+}
+
+/// Askama template for the velocity chart partial (HTMX).
+#[derive(Template)]
+#[template(path = "partials/velocity-chart.html")]
+pub struct VelocityChartTemplate {
+    pub velocity_data: Vec<VelocityDataPoint>,
+    pub period: String,
+    pub last_updated: String,
+}
+
+impl IntoResponse for VelocityChartTemplate {
+    fn into_response(self) -> Response {
+        match self.render() {
+            Ok(html) => Html(html).into_response(),
+            Err(err) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to render template: {}", err),
+            )
+                .into_response(),
+        }
+    }
+}
+
+/// Askama template for the metrics cards partial (HTMX).
+#[derive(Template)]
+#[template(path = "partials/metrics.html")]
+pub struct MetricsTemplate {
+    pub requests_per_second: String,
+    pub error_rate_percent: String,
+    pub error_rate_class: String,
+    pub avg_response_time_ms: String,
+    pub db_queries_per_second: String,
+}
+
+impl IntoResponse for MetricsTemplate {
     fn into_response(self) -> Response {
         match self.render() {
             Ok(html) => Html(html).into_response(),

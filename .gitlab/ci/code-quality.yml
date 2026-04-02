@@ -1,13 +1,17 @@
 image: rust:$RUST_VERSION
 
-variables:
-  CARGO_INCREMENTAL: "0"
-  CARGO_TERM_COLOR: always
+compilation-check:
+  stage: quality
+  script:
+    - cargo fetch
+    - cargo check --workspace --all-targets --locked
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        - "*.rs"
+        - "*.html"
 
-stages:
-  - quality
-
-lint:
+formatting-check:
   stage: quality
   script:
     - rustup component add clippy rustfmt
@@ -17,19 +21,3 @@ lint:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       changes:
         - "*.rs"
-        - "Cargo.toml"
-        - "Cargo.lock"
-    - when: never
-
-build:
-  stage: quality
-  script:
-    - cargo fetch
-    - cargo check --workspace --all-targets --locked
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-      changes:
-        - "*.rs"
-        - "Cargo.toml"
-        - "Cargo.lock"
-    - when: never

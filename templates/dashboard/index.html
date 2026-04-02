@@ -98,7 +98,7 @@
                     class="w-10 h-10 rounded-xl bg-gradient-to-br from-nebula-purple/20 to-nebula-blue/20 backdrop-blur-sm border border-white/10 flex items-center justify-center"
                 >
                     <i
-                        data-lucide="heart-pulse"
+                        data-lucide="monitor-cog"
                         class="w-5 h-5 text-hazard-low"
                     ></i>
                 </div>
@@ -106,81 +106,78 @@
                     <h2
                         class="text-lg font-heading font-semibold text-text-primary"
                     >
-                        System Health
+                        System Metrics
                     </h2>
-                    <p class="text-xs text-text-muted font-light mt-0.5">
-                        Real-time telemetry
-                    </p>
                 </div>
-            </div>
-            <div
-                class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-hazard-low/10 border border-hazard-low/20"
-            >
-                <span
-                    class="w-2 h-2 rounded-full bg-hazard-low animate-pulse"
-                ></span>
-                <span class="text-xs font-semibold text-hazard-low">LIVE</span>
             </div>
         </div>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div
-                class="metric-card group text-center p-5 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/5 hover:border-nebula-purple/30 hover:bg-white/10 transition-all duration-300 hover:scale-105"
-            >
+        <!-- Metrics Container (HTMX will load content) -->
+        <div
+            id="metrics-container"
+            hx-get="/dashboard/metrics"
+            hx-trigger="load"
+            hx-swap="innerHTML"
+        >
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div
-                    class="text-2xl font-heading font-bold bg-gradient-to-r from-nebula-purple to-nebula-blue bg-clip-text text-transparent group-hover:from-nebula-blue group-hover:to-nebula-cyan transition-all duration-300"
-                    id="metric-rps"
+                    class="metric-card group text-center p-5 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/5 hover:border-nebula-purple/30 hover:bg-white/10 transition-all duration-300 hover:scale-105"
                 >
-                    -
+                    <div
+                        class="text-2xl font-heading font-bold bg-gradient-to-r from-nebula-purple to-nebula-blue bg-clip-text text-transparent group-hover:from-nebula-blue group-hover:to-nebula-cyan transition-all duration-300"
+                        id="metric-rps"
+                    >
+                        -
+                    </div>
+                    <div
+                        class="text-xs text-text-tertiary font-medium mt-1.5 uppercase tracking-wide"
+                    >
+                        Requests/sec
+                    </div>
                 </div>
                 <div
-                    class="text-xs text-text-tertiary font-medium mt-1.5 uppercase tracking-wide"
+                    class="metric-card group text-center p-5 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/5 hover:border-nebula-purple/30 hover:bg-white/10 transition-all duration-300 hover:scale-105"
                 >
-                    Requests/sec
-                </div>
-            </div>
-            <div
-                class="metric-card group text-center p-5 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/5 hover:border-nebula-purple/30 hover:bg-white/10 transition-all duration-300 hover:scale-105"
-            >
-                <div
-                    class="text-2xl font-heading font-bold bg-gradient-to-r from-nebula-purple to-nebula-blue bg-clip-text text-transparent group-hover:from-nebula-blue group-hover:to-nebula-cyan transition-all duration-300"
-                    id="metric-error-rate"
-                >
-                    -
-                </div>
-                <div
-                    class="text-xs text-text-tertiary font-medium mt-1.5 uppercase tracking-wide"
-                >
-                    Error Rate
-                </div>
-            </div>
-            <div
-                class="metric-card group text-center p-5 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/5 hover:border-nebula-purple/30 hover:bg-white/10 transition-all duration-300 hover:scale-105"
-            >
-                <div
-                    class="text-2xl font-heading font-bold bg-gradient-to-r from-nebula-purple to-nebula-blue bg-clip-text text-transparent group-hover:from-nebula-blue group-hover:to-nebula-cyan transition-all duration-300"
-                    id="metric-latency"
-                >
-                    -
+                    <div
+                        class="text-2xl font-heading font-bold bg-gradient-to-r from-nebula-purple to-nebula-blue bg-clip-text text-transparent group-hover:from-nebula-blue group-hover:to-nebula-cyan transition-all duration-300"
+                        id="metric-error-rate"
+                    >
+                        -
+                    </div>
+                    <div
+                        class="text-xs text-text-tertiary font-medium mt-1.5 uppercase tracking-wide"
+                    >
+                        Error Rate
+                    </div>
                 </div>
                 <div
-                    class="text-xs text-text-tertiary font-medium mt-1.5 uppercase tracking-wide"
+                    class="metric-card group text-center p-5 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/5 hover:border-nebula-purple/30 hover:bg-white/10 transition-all duration-300 hover:scale-105"
                 >
-                    Avg Latency
+                    <div
+                        class="text-2xl font-heading font-bold bg-gradient-to-r from-nebula-purple to-nebula-blue bg-clip-text text-transparent group-hover:from-nebula-blue group-hover:to-nebula-cyan transition-all duration-300"
+                        id="metric-latency"
+                    >
+                        -
+                    </div>
+                    <div
+                        class="text-xs text-text-tertiary font-medium mt-1.5 uppercase tracking-wide"
+                    >
+                        Avg Latency
+                    </div>
                 </div>
-            </div>
-            <div
-                class="metric-card group text-center p-5 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/5 hover:border-nebula-purple/30 hover:bg-white/10 transition-all duration-300 hover:scale-105"
-            >
                 <div
-                    class="text-2xl font-heading font-bold bg-gradient-to-r from-nebula-purple to-nebula-blue bg-clip-text text-transparent group-hover:from-nebula-blue group-hover:to-nebula-cyan transition-all duration-300"
-                    id="metric-db-qps"
+                    class="metric-card group text-center p-5 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/5 hover:border-nebula-purple/30 hover:bg-white/10 transition-all duration-300 hover:scale-105"
                 >
-                    -
-                </div>
-                <div
-                    class="text-xs text-text-tertiary font-medium mt-1.5 uppercase tracking-wide"
-                >
-                    DB Queries/sec
+                    <div
+                        class="text-2xl font-heading font-bold bg-gradient-to-r from-nebula-purple to-nebula-blue bg-clip-text text-transparent group-hover:from-nebula-blue group-hover:to-nebula-cyan transition-all duration-300"
+                        id="metric-db-qps"
+                    >
+                        -
+                    </div>
+                    <div
+                        class="text-xs text-text-tertiary font-medium mt-1.5 uppercase tracking-wide"
+                    >
+                        DB Queries/sec
+                    </div>
                 </div>
             </div>
         </div>
@@ -221,38 +218,15 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-3">
-                    <div class="timeline-btn-group">
-                        <button
-                            class="btn-timeline px-4 py-2"
-                            data-period="7d"
-                            onclick="setVelocityPeriod('7d')"
-                        >
-                            7D
-                        </button>
-                        <button
-                            class="btn-timeline px-4 py-2"
-                            data-period="30d"
-                            onclick="setVelocityPeriod('30d')"
-                        >
-                            30D
-                        </button>
-                        <button
-                            class="btn-timeline px-4 py-2"
-                            data-period="90d"
-                            onclick="setVelocityPeriod('90d')"
-                        >
-                            90D
-                        </button>
-                        <button
-                            class="btn-timeline px-4 py-2"
-                            data-period="1y"
-                            onclick="setVelocityPeriod('1y')"
-                        >
-                            1Y
-                        </button>
+                    <!-- Timeline Buttons Container (HTMX will update with active state) -->
+                    <div id="timeline-buttons-container">
+                        {% include "partials/timeline-buttons.html" %}
                     </div>
                     <button
-                        onclick="refreshVelocityData()"
+                        hx-get="/dashboard/velocity?period=7d"
+                        hx-target="#velocity-chart-container"
+                        hx-swap="outerHTML"
+                        hx-trigger="click"
                         class="btn-icon p-2 rounded-xl"
                         aria-label="Refresh"
                     >
@@ -349,6 +323,16 @@
     <div class="glass-card rounded-3xl overflow-hidden p-8">
         <div class="text-center text-text-secondary">Loading approaches...</div>
     </div>
+</div>
+
+<!-- Velocity Chart Data Container (SSR Initial Data) -->
+<div id="velocity-chart-container" class="hidden">
+    <div
+        id="velocity-chart-data"
+        data-labels='[{% for point in velocity_data %}"{{ point.date.format("%b %d") }}"{% if !loop.last %}, {% endif %}{% endfor %}]'
+        data-values="[{% for point in velocity_data %}{{ point.velocity_km_per_h }}{% if !loop.last %}, {% endif %}{% endfor %}]"
+        data-period="7d"
+    ></div>
 </div>
 
 <script>

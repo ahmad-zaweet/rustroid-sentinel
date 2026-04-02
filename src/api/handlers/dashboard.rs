@@ -6,8 +6,12 @@ use chrono::NaiveDate;
 use serde::Deserialize;
 use tracing::{error, info};
 
-use crate::api::templates::{ApproachesTableTemplate, DashboardTemplate, PageItem};
+use crate::api::templates::{
+    ApproachesTableTemplate, DashboardTemplate, MetricsTemplate, PageItem, VelocityChartTemplate,
+};
+use crate::api::types::TimePeriod;
 use crate::database::dashboard::DashboardRepository;
+use crate::metrics::get_metrics_summary;
 use crate::server::AppState;
 
 /// Query parameters for dashboard filters.
@@ -108,6 +112,9 @@ pub async fn render_dashboard(State(state): State<AppState>) -> impl IntoRespons
     let showing_start = if total_items == 0 { 0 } else { 1 };
     let showing_end = std::cmp::min(page_size as i64, total_items);
 
+    let now = chrono::Local::now();
+    let last_updated = now.format("%I:%M:%S %p").to_string();
+
     DashboardTemplate {
         total_asteroids: format_number(stats.total_asteroids as f64),
         total_approaches: format_number(stats.total_approaches as f64),
@@ -120,6 +127,9 @@ pub async fn render_dashboard(State(state): State<AppState>) -> impl IntoRespons
         total_pages,
         page_size,
         velocity_data_json: serde_json::to_string(&velocity_data).unwrap_or_default(),
+        velocity_data,
+        last_updated,
+        period: "7d".to_string(),
     }
 }
 
@@ -252,6 +262,84 @@ fn build_filter_query_string(
         String::new()
     } else {
         format!("&{}", parts.join("&"))
+    }
+}
+
+/// Query parameters for velocity data refresh.
+#[derive(Debug, Deserialize)]
+pub struct VelocityRefreshQuery {
+    /// Time period for velocity data (e.g., "7d", "30d", "90d", "1y").
+    pub period: Option<TimePeriod>,
+}
+
+/// GET /dashboard/velocity
+///
+/// HTMX partial endpoint for refreshing the velocity chart.
+pub async fn refresh_velocity_chart(
+    State(state): State<AppState>,
+    Query(params): Query<VelocityRefreshQuery>,
+) -> impl IntoResponse {
+    info!(
+        "Velocity chart refresh requested with period: {:?}",
+        params.period
+    );
+
+    let period = params.period.unwrap_or(TimePeriod::Last7Days);
+    let period_str = match period {
+        TimePeriod::Last7Days => "7d",
+        TimePeriod::Last30Days => "30d",
+        TimePeriod::Last90Days => "90d",
+        TimePeriod::LastYear => "1y",
+    };
+
+    let velocity_data =
+        match DashboardRepository::get_velocity_data_by_period(&state.db_pool, period).await {
+            Ok(data) => data,
+            Err(e) => {
+                error!("Failed to fetch velocity data: {}", e);
+                Vec::new()
+            }
+        };
+
+    let now = chrono::Local::now();
+    let last_updated = now.format("%I:%M:%S %p").to_string();
+
+    VelocityChartTemplate {
+        velocity_data,
+        period: period_str.to_string(),
+        last_updated,
+    }
+}
+
+/// GET /dashboard/metrics
+///
+/// HTMX partial endpoint for refreshing system metrics.
+pub async fn refresh_metrics(State(state): State<AppState>) -> impl IntoResponse {
+    info!("Metrics refresh requested");
+
+    let metrics = get_metrics_summary(
+        &state.prometheus_config,
+        &state.grafana_cloud_prometheus_config,
+        &state.db_pool,
+    )
+    .await;
+
+    // Determine error rate class based on value
+    let error_rate = metrics.0.error_rate_percent;
+    let error_rate_class = if error_rate > 5.0 {
+        "text-hazard-critical"
+    } else if error_rate > 1.0 {
+        "text-hazard-high"
+    } else {
+        "text-hazard-low"
+    };
+
+    MetricsTemplate {
+        requests_per_second: format!("{:.3}", metrics.0.requests_per_second),
+        error_rate_percent: format!("{:.3}%", error_rate),
+        error_rate_class: error_rate_class.to_string(),
+        avg_response_time_ms: format!("{:.3} ms", metrics.0.avg_response_time_ms),
+        db_queries_per_second: format!("{:.3}", metrics.0.db_queries_per_second),
     }
 }
 

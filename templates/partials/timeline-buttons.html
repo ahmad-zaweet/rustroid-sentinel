@@ -1,0 +1,43 @@
+<!-- Timeline Buttons Partial -->
+<div class="timeline-btn-group">
+    <button
+        class="btn-timeline px-4 py-2{% if period == "7d" %} active{% endif %}"
+        data-period="7d"
+        hx-get="/dashboard/velocity?period=7d"
+        hx-target="#velocity-chart-container"
+        hx-swap="outerHTML"
+        hx-trigger="click"
+    >
+        7D
+    </button>
+    <button
+        class="btn-timeline px-4 py-2{% if period == "30d" %} active{% endif %}"
+        data-period="30d"
+        hx-get="/dashboard/velocity?period=30d"
+        hx-target="#velocity-chart-container"
+        hx-swap="outerHTML"
+        hx-trigger="click"
+    >
+        30D
+    </button>
+    <button
+        class="btn-timeline px-4 py-2{% if period == "90d" %} active{% endif %}"
+        data-period="90d"
+        hx-get="/dashboard/velocity?period=90d"
+        hx-target="#velocity-chart-container"
+        hx-swap="outerHTML"
+        hx-trigger="click"
+    >
+        90D
+    </button>
+    <button
+        class="btn-timeline px-4 py-2{% if period == "1y" %} active{% endif %}"
+        data-period="1y"
+        hx-get="/dashboard/velocity?period=1y"
+        hx-target="#velocity-chart-container"
+        hx-swap="outerHTML"
+        hx-trigger="click"
+    >
+        1Y
+    </button>
+</div>

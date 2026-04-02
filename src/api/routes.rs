@@ -61,8 +61,12 @@ pub fn api_router() -> Router<AppState> {
 /// |--------|----------------|----------------------|------------------------------------|
 /// | GET    | `/table`       | [`handlers::dashboard_table`] | HTMX partial for approaches table |
 /// | GET    | `/etl-runs`    | [`handlers::dashboard_etl_runs`] | HTMX partial for ETL runs with pagination |
+/// | GET    | `/velocity`    | [`handlers::refresh_velocity_chart`] | HTMX partial for velocity chart refresh |
+/// | GET    | `/metrics`     | [`handlers::refresh_metrics`] | HTMX partial for system metrics refresh |
 pub fn dashboard_router() -> Router<AppState> {
     Router::new()
         .route("/table", get(handlers::dashboard_table))
         .route("/etl-runs", get(handlers::dashboard_etl_runs))
+        .route("/velocity", get(handlers::refresh_velocity_chart))
+        .route("/metrics", get(handlers::refresh_metrics))
 }

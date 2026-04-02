@@ -1,0 +1,63 @@
+<!-- Metrics Cards - SSR Partial -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div
+        class="metric-card group text-center p-5 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/5 hover:border-nebula-purple/30 hover:bg-white/10 transition-all duration-300 hover:scale-105"
+    >
+        <div
+            class="text-2xl font-heading font-bold bg-gradient-to-r from-nebula-purple to-nebula-blue bg-clip-text text-transparent group-hover:from-nebula-blue group-hover:to-nebula-cyan transition-all duration-300"
+            id="metric-rps"
+        >
+            {{ requests_per_second }}
+        </div>
+        <div
+            class="text-xs text-text-tertiary font-medium mt-1.5 uppercase tracking-wide"
+        >
+            Requests/sec
+        </div>
+    </div>
+    <div
+        class="metric-card group text-center p-5 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/5 hover:border-nebula-purple/30 hover:bg-white/10 transition-all duration-300 hover:scale-105"
+    >
+        <div
+            class="text-2xl font-heading font-bold bg-gradient-to-r from-nebula-purple to-nebula-blue bg-clip-text text-transparent group-hover:from-nebula-blue group-hover:to-nebula-cyan transition-all duration-300 {{ error_rate_class }}"
+            id="metric-error-rate"
+        >
+            {{ error_rate_percent }}
+        </div>
+        <div
+            class="text-xs text-text-tertiary font-medium mt-1.5 uppercase tracking-wide"
+        >
+            Error Rate
+        </div>
+    </div>
+    <div
+        class="metric-card group text-center p-5 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/5 hover:border-nebula-purple/30 hover:bg-white/10 transition-all duration-300 hover:scale-105"
+    >
+        <div
+            class="text-2xl font-heading font-bold bg-gradient-to-r from-nebula-purple to-nebula-blue bg-clip-text text-transparent group-hover:from-nebula-blue group-hover:to-nebula-cyan transition-all duration-300"
+            id="metric-latency"
+        >
+            {{ avg_response_time_ms }}
+        </div>
+        <div
+            class="text-xs text-text-tertiary font-medium mt-1.5 uppercase tracking-wide"
+        >
+            Avg Latency
+        </div>
+    </div>
+    <div
+        class="metric-card group text-center p-5 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/5 hover:border-nebula-purple/30 hover:bg-white/10 transition-all duration-300 hover:scale-105"
+    >
+        <div
+            class="text-2xl font-heading font-bold bg-gradient-to-r from-nebula-purple to-nebula-blue bg-clip-text text-transparent group-hover:from-nebula-blue group-hover:to-nebula-cyan transition-all duration-300"
+            id="metric-db-qps"
+        >
+            {{ db_queries_per_second }}
+        </div>
+        <div
+            class="text-xs text-text-tertiary font-medium mt-1.5 uppercase tracking-wide"
+        >
+            DB Queries/sec
+        </div>
+    </div>
+</div>
