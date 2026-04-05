@@ -11,20 +11,91 @@
                     <p class="text-sm text-text-muted font-light mt-0.5">Recent asteroid flyby data</p>
                 </div>
             </div>
-            <div class="flex items-center gap-3">
-                <select id="hazard-filter" name="hazard_class" hx-get="/dashboard/table" hx-trigger="change" hx-target="#approaches-container" hx-swap="innerHTML" class="btn-glass px-4 py-2 rounded-xl text-sm font-medium bg-transparent text-text-secondary cursor-pointer" aria-label="Filter">
-                    <option value="">All Hazards</option>
-                    <option value="Critical" {% if hazard_selected == "Critical" %}selected{% endif %}>Critical</option>
-                    <option value="High" {% if hazard_selected == "High" %}selected{% endif %}>High</option>
-                    <option value="Medium" {% if hazard_selected == "Medium" %}selected{% endif %}>Medium</option>
-                    <option value="Low" {% if hazard_selected == "Low" %}selected{% endif %}>Low</option>
-                </select>
-                <input type="date" id="start-date" name="start_date" value="{{ start_date_value }}" hx-get="/dashboard/table" hx-trigger="change" hx-target="#approaches-container" hx-swap="innerHTML" hx-params="not empty" class="btn-glass px-4 py-2 rounded-xl text-sm font-medium bg-transparent text-text-secondary" aria-label="Start date"/>
-                <input type="date" id="end-date" name="end_date" value="{{ end_date_value }}" hx-get="/dashboard/table" hx-trigger="change" hx-target="#approaches-container" hx-swap="innerHTML" hx-params="not empty" class="btn-glass px-4 py-2 rounded-xl text-sm font-medium bg-transparent text-text-secondary" aria-label="End date"/>
-                <button hx-get="/dashboard/table" hx-target="#approaches-container" hx-swap="innerHTML" class="btn-glass px-4 py-2 rounded-xl text-sm font-medium" aria-label="Reset filters">
+            <form
+                id="filter-form"
+                hx-get="/dashboard/table"
+                hx-trigger="change from:input"
+                hx-target="#approaches-container"
+                hx-swap="innerHTML"
+                hx-params="not empty"
+                class="flex items-center gap-3"
+            >
+
+                <div class="relative" id="hazard-dropdown">
+                    <input
+                        type="hidden"
+                        id="hazard-filter"
+                        name="hazard_class"
+                        value="{{ hazard_selected }}"
+                    />
+                    <button
+                        type="button"
+                        id="hazard-dropdown-trigger"
+                        class="px-4 py-2.5 rounded-xl text-sm font-medium bg-white/5 backdrop-blur-sm border border-white/10 text-text-secondary cursor-pointer transition-all duration-300 hover:border-nebula-purple/30 hover:bg-white/10 focus:border-nebula-purple/50 focus:bg-white/10 focus:outline-none focus:ring-2 focus:ring-nebula-purple/20 flex items-center gap-2 min-w-[140px] justify-between"
+                        aria-haspopup="listbox"
+                        aria-expanded="false"
+                        aria-label="Filter by hazard class"
+                    >
+                        <span id="hazard-dropdown-label">{% if hazard_selected.is_empty() %}All Hazards{% else %}{{ hazard_selected }}{% endif %}</span>
+                        <i data-lucide="chevron-down" class="w-4 h-4 transition-transform duration-200" id="hazard-dropdown-chevron"></i>
+                    </button>
+                    <div
+                        id="hazard-dropdown-menu"
+                        role="listbox"
+                        aria-label="Hazard classes"
+                        class="absolute z-50 mt-2 w-full rounded-xl bg-space-900/95 backdrop-blur-xl border border-white/10 shadow-2xl opacity-0 invisible translate-y-2 transition-all duration-200 overflow-hidden"
+                    >
+                        <div class="py-1">
+                            <button type="button" role="option" data-value="" class="hazard-option w-full px-4 py-2.5 text-sm text-text-secondary hover:bg-white/10 hover:text-text-primary transition-colors duration-150 text-left flex items-center gap-2 {% if hazard_selected.is_empty() %}bg-nebula-purple/10 text-nebula-purple{% endif %}">
+                                {% if hazard_selected.is_empty() %}<i data-lucide="check" class="w-4 h-4 flex-shrink-0"></i>{% else %}<span class="w-4 flex-shrink-0"></span>{% endif %}
+                                <span>All Hazards</span>
+                            </button>
+                            <button type="button" role="option" data-value="Critical" class="hazard-option w-full px-4 py-2.5 text-sm hover:bg-white/10 transition-colors duration-150 text-left flex items-center gap-2 {% if hazard_selected == "Critical" %}bg-nebula-purple/10 text-hazard-critical{% else %}text-hazard-critical{% endif %}">
+                                {% if hazard_selected == "Critical" %}<i data-lucide="check" class="w-4 h-4 flex-shrink-0"></i>{% else %}<span class="w-4 flex-shrink-0"></span>{% endif %}
+                                <span>Critical</span>
+                            </button>
+                            <button type="button" role="option" data-value="High" class="hazard-option w-full px-4 py-2.5 text-sm hover:bg-white/10 transition-colors duration-150 text-left flex items-center gap-2 {% if hazard_selected == "High" %}bg-nebula-purple/10 text-hazard-high{% else %}text-hazard-high{% endif %}">
+                                {% if hazard_selected == "High" %}<i data-lucide="check" class="w-4 h-4 flex-shrink-0"></i>{% else %}<span class="w-4 flex-shrink-0"></span>{% endif %}
+                                <span>High</span>
+                            </button>
+                            <button type="button" role="option" data-value="Medium" class="hazard-option w-full px-4 py-2.5 text-sm hover:bg-white/10 transition-colors duration-150 text-left flex items-center gap-2 {% if hazard_selected == "Medium" %}bg-nebula-purple/10 text-hazard-medium{% else %}text-hazard-medium{% endif %}">
+                                {% if hazard_selected == "Medium" %}<i data-lucide="check" class="w-4 h-4 flex-shrink-0"></i>{% else %}<span class="w-4 flex-shrink-0"></span>{% endif %}
+                                <span>Medium</span>
+                            </button>
+                            <button type="button" role="option" data-value="Low" class="hazard-option w-full px-4 py-2.5 text-sm hover:bg-white/10 transition-colors duration-150 text-left flex items-center gap-2 {% if hazard_selected == "Low" %}bg-nebula-purple/10 text-hazard-low{% else %}text-hazard-low{% endif %}">
+                                {% if hazard_selected == "Low" %}<i data-lucide="check" class="w-4 h-4 flex-shrink-0"></i>{% else %}<span class="w-4 flex-shrink-0"></span>{% endif %}
+                                <span>Low</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <input
+                    type="date"    
+                    min="2000-01-01"
+                    max="2100-12-31"
+                    id="start-date"
+                    name="start_date"
+                    value="{{ start_date_value }}"
+                    class="px-4 py-2.5 rounded-xl text-sm font-medium bg-white/5 backdrop-blur-sm border border-white/10 text-text-secondary transition-all duration-300 hover:border-nebula-cyan/30 hover:bg-white/10 focus:border-nebula-cyan/50 focus:bg-white/10 focus:outline-none focus:ring-2 focus:ring-nebula-cyan/20 [color-scheme:dark]"
+                    aria-label="Start date"
+                />
+                <input
+                    type="date"
+                    id="end-date"
+                    name="end_date"
+                    value="{{ end_date_value }}"
+                    class="px-4 py-2.5 rounded-xl text-sm font-medium bg-white/5 backdrop-blur-sm border border-white/10 text-text-secondary transition-all duration-300 hover:border-nebula-blue/30 hover:bg-white/10 focus:border-nebula-blue/50 focus:bg-white/10 focus:outline-none focus:ring-2 focus:ring-nebula-blue/20 [color-scheme:dark]"
+                    aria-label="End date"
+                    min="{% if !start_date_value.is_empty() %}{{ start_date_value }}{% else %}2000-01-01{% endif %}"
+                    max="2100-12-31"
+                />
+
+                <button type="button" hx-get="/dashboard/table" hx-target="#approaches-container" hx-swap="innerHTML" class="btn-glass px-4 py-2 rounded-xl text-sm font-medium" aria-label="Reset filters">
                     <i data-lucide="x" class="w-4 h-4"></i>
                 </button>
-            </div>
+            </form>
+
         </div>
     </div>
     <div class="overflow-x-auto">

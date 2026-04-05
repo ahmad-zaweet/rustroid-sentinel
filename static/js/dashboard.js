@@ -347,3 +347,35 @@ document.addEventListener("DOMContentLoaded", function () {
     window.lucide.createIcons();
   }
 });
+
+/**
+ * Filter Form Validation & Constraint Syncing
+ */
+document.addEventListener("DOMContentLoaded", () => {
+  const form = document.getElementById("filter-form");
+  const startInput = document.getElementById("start-date");
+  const endInput = document.getElementById("end-date");
+
+  if (form && startInput && endInput) {
+    // 1. Sync min/max constraints dynamically
+    startInput.addEventListener("change", () => {
+      if (startInput.value) endInput.min = startInput.value;
+    });
+
+    endInput.addEventListener("change", () => {
+      if (endInput.value) startInput.max = endInput.value;
+    });
+
+    // 2. Validate before HTMX request
+    form.addEventListener("htmx:beforeRequest", (e) => {
+      if (
+        startInput.value &&
+        endInput.value &&
+        endInput.value < startInput.value
+      ) {
+        alert("End date cannot be before start date.");
+        e.preventDefault();
+      }
+    });
+  }
+});

@@ -288,10 +288,13 @@ impl DashboardRepository {
         }
 
         if let Some(end) = end_date {
-            count_query.push(" AND a.close_approach_date <= ");
-            count_query.push_bind(end);
-            data_query.push(" AND a.close_approach_date <= ");
-            data_query.push_bind(end);
+            let next_day = end
+                .checked_add_days(chrono::Days::new(1))
+                .expect("date overflow");
+            count_query.push(" AND a.close_approach_date < ");
+            count_query.push_bind(next_day);
+            data_query.push(" AND a.close_approach_date < ");
+            data_query.push_bind(next_day);
         }
 
         if let Some(hazard) = hazard_class {

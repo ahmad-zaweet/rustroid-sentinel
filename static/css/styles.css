@@ -100,6 +100,22 @@ body {
         transform: scale(0.8);
     }
 }
+/* ============================================
+   Custom Dropdown (Hazard Filter)
+   ============================================ */
+#hazard-dropdown-menu {
+    min-width: 180px;
+}
+
+#hazard-dropdown-menu.open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+#hazard-dropdown-trigger[aria-expanded="true"] #hazard-dropdown-chevron {
+    transform: rotate(180deg);
+}
 
 /* ============================================
    Glassmorphism Utilities
@@ -508,4 +524,59 @@ select:focus-visible {
 .status-dot-live {
     background: #4ade80;
     box-shadow: 0 0 8px rgba(74, 222, 128, 0.5);
+}
+
+/* ============================================
+   Tooltip (Pure CSS, CSP-Compliant)
+   ============================================ */
+.tooltip-link {
+    position: relative;
+}
+
+.tooltip-link::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    padding: 4px 10px;
+    background: rgba(10, 10, 15, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: #e5e7eb;
+    font-size: 0.7rem;
+    font-family: "Titillium Web", sans-serif;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: all 0.2s ease;
+    z-index: 100;
+}
+
+.tooltip-link::before {
+    content: "";
+    position: absolute;
+    bottom: calc(100% + 3px);
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    border: 5px solid transparent;
+    border-top-color: rgba(10, 10, 15, 0.95);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: all 0.2s ease;
+    z-index: 100;
+}
+
+.tooltip-link:hover::after,
+.tooltip-link:hover::before {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
 }

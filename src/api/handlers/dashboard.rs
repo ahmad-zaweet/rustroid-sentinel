@@ -14,16 +14,33 @@ use crate::database::dashboard::DashboardRepository;
 use crate::metrics::get_metrics_summary;
 use crate::server::AppState;
 
+/// Deserialize empty strings as `None` for query parameters.
+fn empty_string_as_none<'de, D, T>(de: D) -> Result<Option<T>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: std::str::FromStr,
+    T::Err: std::fmt::Display,
+{
+    let opt = Option::<String>::deserialize(de)?;
+    match opt.as_deref() {
+        None | Some("") => Ok(None),
+        Some(s) => s.parse().map(Some).map_err(serde::de::Error::custom),
+    }
+}
+
 /// Query parameters for dashboard filters.
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct DashboardFilters {
     /// Page number for pagination.
     pub page: Option<u32>,
     /// Hazard classification filter.
+    #[serde(default, deserialize_with = "empty_string_as_none")]
     pub hazard_class: Option<String>,
     /// Start date filter.
+    #[serde(default, deserialize_with = "empty_string_as_none")]
     pub start_date: Option<NaiveDate>,
     /// End date filter.
+    #[serde(default, deserialize_with = "empty_string_as_none")]
     pub end_date: Option<NaiveDate>,
 }
 
@@ -149,6 +166,13 @@ pub async fn dashboard_table(
     let page = filters.page.unwrap_or(1);
     let page_size = 20;
 
+    // Validate date range
+    if let (Some(start), Some(end)) = (filters.start_date, filters.end_date)
+        && end < start
+    {
+        return Err(axum::http::StatusCode::BAD_REQUEST);
+    }
+
     // Fetch paginated approaches
     let (approaches, total_items) = match DashboardRepository::get_paginated_approaches(
         &state.db_pool,
@@ -156,7 +180,7 @@ pub async fn dashboard_table(
         page_size,
         filters.start_date,
         filters.end_date,
-        filters.hazard_class.as_deref(),
+        filters.hazard_class.as_deref().filter(|h| !h.is_empty()),
     )
     .await
     {
@@ -195,7 +219,10 @@ pub async fn dashboard_table(
         filters.start_date.as_ref(),
         filters.end_date.as_ref(),
     );
-    let hazard_selected = filters.hazard_class.unwrap_or_default();
+    let hazard_selected = filters
+        .hazard_class
+        .filter(|h| !h.is_empty())
+        .unwrap_or_default();
     let start_date_value = filters
         .start_date
         .map(|d| d.to_string())
