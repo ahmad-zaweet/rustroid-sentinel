@@ -1,4 +1,4 @@
-![Rustroid Sentinel Cover Image](assets/cover_image.jpg)
+![Rustroid Sentinel Cover Image](assets/rustroid-sentinel-cover.png)
 
 # Rustroid Sentinel
 
@@ -33,7 +33,7 @@
 
 ## 📖 Overview
 
-Rustroid Sentinel is a high-performance backend system built to directly integrate with the NASA NeoWs API, continually extracting and analyzing data on potentially hazardous near-Earth objects (NEOs). Built entirely in Rust using the `tokio` ecosystem, the service delivers a lightning-fast, highly concurrent data pipeline designed for demanding operational environments. 
+Rustroid Sentinel is a high-performance backend system built to directly integrate with the NASA NeoWs API, continually extracting and analyzing data on potentially hazardous near-Earth objects (NEOs). Built entirely in Rust using the `tokio` ecosystem, the service delivers a lightning-fast, highly concurrent data pipeline designed for demanding operational environments.
 
 This repository showcases production-grade engineering principles. The architecture emphasizes modularity via discrete feature flags (`api`, `alerting`, `metrics`, `etl`), separating operations into independent ETL processes, Axum API serving, and Discord webhook alerting loops. Data integrity is enforced via `sqlx` async migrations and PostgreSQL. It incorporates modern observability through OpenTelemetry (OTLP) tracing and Prometheus metrics, comprehensive testing (`assert-json-diff`, `wiremock`, `testcontainers`), rate limiting (`axum-governor`), HTML templates (`askama`), and strict security header middlewares (`axum-helmet`), demonstrating a high standard of scalability and operational maturity.
 
@@ -75,35 +75,40 @@ rustroid-sentinel/
 
 ### 📦 Prerequisites
 
-| Tool | Purpose | Recommended Version |
-|------|---------|-------------------|
-| `Rust` | Systems programming language | `1.85+` |
-| `Cargo` | Rust package manager | latest |
-| `git` | Version control | latest |
-| `Docker` | Containerization platform (optional) | latest |
-| `PostgreSQL` | Relational database (for local dev) | `14+` |
+| Tool         | Purpose                              | Recommended Version |
+| ------------ | ------------------------------------ | ------------------- |
+| `Rust`       | Systems programming language         | `1.85+`             |
+| `Cargo`      | Rust package manager                 | latest              |
+| `git`        | Version control                      | latest              |
+| `Docker`     | Containerization platform (optional) | latest              |
+| `PostgreSQL` | Relational database (for local dev)  | `14+`               |
 
 ### 🖥️ Local Development Setup
 
 1. **Clone the Repository**
+
    ```bash
    git clone https://github.com/your-org/rustroid-sentinel.git
    cd rustroid-sentinel
    ```
 
 2. **Install Dependencies** (if using coverage tools)
+
    ```bash
    cargo install sqlx-cli --no-default-features --features postgres
    cargo install cargo-llvm-cov
    ```
 
 3. **Set Up Environment Variables**
+
    ```bash
    cp .env.example .env
    ```
+
    See the [Environment Variables](#-environment-variables) section for details.
 
 4. **Run Database Migrations**
+
    ```bash
    sqlx migrate run --database-url $SERVICE__DATABASE__URL
    ```
@@ -117,18 +122,22 @@ rustroid-sentinel/
 ### 🐳 Running with Docker
 
 1. **Set Up Environment Variables**
+
    ```bash
    cp .env.example .env
    ```
+
    Update `.env` with your configuration, ensuring `SERVICE__DATABASE__URL` points to the Docker database service.
 
 2. **Build and Run**
+
    ```bash
    docker build -t rustroid-sentinel:latest .
    docker run -d -p 8000:8000 --env-file .env rustroid-sentinel:latest
    ```
 
 3. **Viewing Logs**
+
    ```bash
    docker logs -f <container-id>
    ```
@@ -140,33 +149,33 @@ rustroid-sentinel/
 
 ## ⚙️ Environment Variables
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `SERVICE__DATABASE__URL` | PostgreSQL connection string | `postgresql://USER:PASS@HOST/DB` |
-| `SERVICE__DATABASE__MAX_CONNECTIONS` | Max DB pool connections | `10` |
-| `SERVICE__HTTP__USER_AGENT` | Base user agent for requests | `rustroid-sentinel` |
-| `SERVICE__SERVER__REQUEST_TIMEOUT_SECONDS` | API Request Timeout | `300` |
-| `SERVICE__SERVER__RATE_LIMIT_REQUESTS` | Total allowed requests | `100` |
-| `SERVICE__SERVER__RATE_LIMIT_PERIOD_SECONDS` | Rate window duration | `60` |
-| `SERVICE__SERVER__CACHE__ENABLED` | Toggle endpoint response cache | `true` |
-| `SERVICE__NASA__API_KEY` | NASA NeoWs API authentication key | `DEMO_KEY` |
-| `SERVICE__NASA__BASE_URL` | NASA Open API Base URL | `https://api.nasa.gov` |
-| `SERVICE__DISCORD__WEBHOOK_URL` | Discord webhook for threshold alerts | `https://discord.com/api/webhooks/...` |
-| `SERVICE__DISCORD__TIMEOUT_SECONDS` | Action alert timeout | `30` |
-| `SERVICE__PROMETHEUS__URL` | Target OTLP ingestion URL | `https://.../otlp` |
-| `SERVICE__PROMETHEUS__INTERVAL_SECONDS` | Recurring metrics push frequency | `60` |
+| Variable                                     | Description                          | Example                                |
+| -------------------------------------------- | ------------------------------------ | -------------------------------------- |
+| `SERVICE__DATABASE__URL`                     | PostgreSQL connection string         | `postgresql://USER:PASS@HOST/DB`       |
+| `SERVICE__DATABASE__MAX_CONNECTIONS`         | Max DB pool connections              | `10`                                   |
+| `SERVICE__HTTP__USER_AGENT`                  | Base user agent for requests         | `rustroid-sentinel`                    |
+| `SERVICE__SERVER__REQUEST_TIMEOUT_SECONDS`   | API Request Timeout                  | `300`                                  |
+| `SERVICE__SERVER__RATE_LIMIT_REQUESTS`       | Total allowed requests               | `100`                                  |
+| `SERVICE__SERVER__RATE_LIMIT_PERIOD_SECONDS` | Rate window duration                 | `60`                                   |
+| `SERVICE__SERVER__CACHE__ENABLED`            | Toggle endpoint response cache       | `true`                                 |
+| `SERVICE__NASA__API_KEY`                     | NASA NeoWs API authentication key    | `DEMO_KEY`                             |
+| `SERVICE__NASA__BASE_URL`                    | NASA Open API Base URL               | `https://api.nasa.gov`                 |
+| `SERVICE__DISCORD__WEBHOOK_URL`              | Discord webhook for threshold alerts | `https://discord.com/api/webhooks/...` |
+| `SERVICE__DISCORD__TIMEOUT_SECONDS`          | Action alert timeout                 | `30`                                   |
+| `SERVICE__PROMETHEUS__URL`                   | Target OTLP ingestion URL            | `https://.../otlp`                     |
+| `SERVICE__PROMETHEUS__INTERVAL_SECONDS`      | Recurring metrics push frequency     | `60`                                   |
 
 ## ✔️ Available Scripts
 
-| Command | Description |
-|---------|-------------|
-| `cargo run -- serve` | Start the HTTP REST API server |
-| `cargo run --features etl -- extract` | Fetch NEO data from NASA |
-| `cargo run --features etl -- transform` | Cleanse and model raw NEO data |
-| `cargo run --features etl -- load` | Upsert transformed data into PostgreSQL |
+| Command                                  | Description                                |
+| ---------------------------------------- | ------------------------------------------ |
+| `cargo run -- serve`                     | Start the HTTP REST API server             |
+| `cargo run --features etl -- extract`    | Fetch NEO data from NASA                   |
+| `cargo run --features etl -- transform`  | Cleanse and model raw NEO data             |
+| `cargo run --features etl -- load`       | Upsert transformed data into PostgreSQL    |
 | `cargo run --features alerting -- alert` | Check hazard thresholds and trigger alerts |
-| `cargo test` | Run all unit and integration tests |
-| `cargo doc --no-deps` | Generate local API documentation |
+| `cargo test`                             | Run all unit and integration tests         |
+| `cargo doc --no-deps`                    | Generate local API documentation           |
 
 ## 🧪 Testing
 

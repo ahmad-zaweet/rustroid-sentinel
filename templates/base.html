@@ -1,55 +1,219 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" dir="ltr">
     <head>
         <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>{% block title %}Rustroid Sentinel{% endblock %}</title>
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+        />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
 
-        <!-- Google Fonts -->
+        <!-- Primary SEO Meta Tags -->
+        <title>
+            {% block title %}Rustroid Sentinel - Near-Earth Object Monitoring &
+            Analysis{% endblock %}
+        </title>
+        <meta
+            name="description"
+            content="{% block meta_description %}Rustroid Sentinel analyzes NASA NeoWs API data to track and monitor potentially hazardous near-Earth objects (NEOs). High-performance Rust-based pipeline delivering real-time asteroid telemetry, hazard detection, and Discord alerts.{% endblock %}"
+        />
+        <meta
+            name="keywords"
+            content="{% block meta_keywords %}near-Earth objects, NEO tracking, NASA NeoWs API, asteroid monitoring, hazardous asteroids, space telemetry, orbital data, Rust backend{% endblock %}"
+        />
+        <meta name="author" content="Ahmad Zaweet" />
+        <meta
+            name="robots"
+            content="{% block meta_robots %}index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1{% endblock %}"
+        />
+        <meta name="googlebot" content="index, follow" />
+        <meta
+            name="theme-color"
+            content="#0f172a"
+            media="(prefers-color-scheme: dark)"
+        />
+        <meta name="color-scheme" content="dark light" />
+
+        <!-- Canonical URL -->
+        <link
+            rel="canonical"
+            href="https://rustroid-sentinel.onrender.com/"
+        />
+
+        <!-- Open Graph / Facebook -->
+        <meta
+            property="og:type"
+            content="{% block og_type %}website{% endblock %}"
+        />
+        <meta
+            property="og:url"
+            content="https://rustroid-sentinel.onrender.com/"
+        />
+        <meta
+            property="og:title"
+            content="{% block og_title %}Rustroid Sentinel - Near-Earth Object Monitoring & Analysis{% endblock %}"
+        />
+        <meta
+            property="og:description"
+            content="{% block og_description %}High-performance NASA NeoWs API integration for tracking potentially hazardous near-Earth objects with real-time asteroid telemetry and Discord alerts.{% endblock %}"
+        />
+        <meta
+            property="og:image"
+            content="{% block og_image %}/rustroid-sentinel-cover.png{% endblock %}"
+        />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta
+            property="og:image:alt"
+            content="{% block og_image_alt %}Rustroid Sentinel NEO Dashboard{% endblock %}"
+        />
+        <meta property="og:site_name" content="Rustroid Sentinel" />
+        <meta property="og:locale" content="en_US" />
+
+        <!-- Twitter Card -->
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta
+            name="twitter:title"
+            content="{% block twitter_title %}Rustroid Sentinel - Near-Earth Object Monitoring & Analysis{% endblock %}"
+        />
+        <meta
+            name="twitter:description"
+            content="{% block twitter_description %}High-performance NASA NeoWs API integration for tracking potentially hazardous near-Earth objects.{% endblock %}"
+        />
+        <meta
+            name="twitter:image"
+            content="{% block twitter_image %}/rustroid-sentinel-cover.png{% endblock %}"
+        />
+        <meta
+            name="twitter:image:alt"
+            content="{% block twitter_image_alt %}Rustroid Sentinel NEO Dashboard{% endblock %}"
+        />
+
+        <!-- Favicon & Touch Icons -->
+        <link
+            rel="icon"
+            type="image/x-icon"
+            href="/favicon.ico"
+        />
+        <meta name="msapplication-TileColor" content="#0f172a" />
+
+        <!-- Structured Data (JSON-LD) -->
+        <script type="application/ld+json">
+            {
+                "@context": "https://schema.org",
+                "@type": "WebApplication",
+                "name": "Rustroid Sentinel",
+                "url": "https://rustroid-sentinel.onrender.com/",
+                "description": "High-performance NASA NeoWs API integration for tracking potentially hazardous near-Earth objects (NEOs) with real-time asteroid telemetry, hazard detection, and Discord alerts.",
+                "applicationCategory": "ScienceApplication",
+                "operatingSystem": "Web Browser",
+                "browserRequirements": "Requires JavaScript. Requires modern browser.",
+                "offers": {
+                    "@type": "Offer",
+                    "price": "0",
+                    "priceCurrency": "USD"
+                },
+                "author": {
+                    "@type": "Organization",
+                    "name": "Rustroid Sentinel Team",
+                    "url": "https://rustroid-sentinel.onrender.com/"
+                },
+                "knowsAbout": [
+                    "Near-Earth Objects",
+                    "NASA NeoWs API",
+                    "Asteroid Monitoring",
+                    "Space Telemetry"
+                ]
+            }
+        </script>
+
+        <!-- Performance: Preconnect to Critical Origins -->
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
+        <link rel="dns-prefetch" href="https://unpkg.com" />
+
+        <!-- Google Fonts -->
         <link
             href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Titillium+Web:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&display=swap"
             rel="stylesheet"
         />
 
-        <!-- Tailwind CSS -->
-        <script src="https://cdn.tailwindcss.com"></script>
-        <script src="/js/tailwind.config.js"></script>
+        <!-- Tailwind CSS (Defer Non-Critical JS) -->
+        <script src="https://cdn.tailwindcss.com" defer></script>
+        <script src="/js/tailwind.config.js" defer></script>
 
         <!-- Custom CSS -->
+        <link rel="preload" href="/css/styles.css" as="style" />
         <link rel="stylesheet" href="/css/styles.css" />
-        <link rel="stylesheet" href="/css/animations.css" />
-        <link rel="stylesheet" href="/css/spotlight.css" />
+        <link rel="preload" href="/css/animations.css" as="style" />
+        <link
+            rel="stylesheet"
+            href="/css/animations.css"
+            media="print"
+            onload="this.media = 'all'"
+        />
+        <noscript
+            ><link rel="stylesheet" href="/css/animations.css"
+        /></noscript>
+        <link rel="preload" href="/css/spotlight.css" as="style" />
+        <link
+            rel="stylesheet"
+            href="/css/spotlight.css"
+            media="print"
+            onload="this.media = 'all'"
+        />
+        <noscript><link rel="stylesheet" href="/css/spotlight.css" /></noscript>
+
+        {% block head_extra %}{% endblock %}
     </head>
 
     <body
         class="text-text-primary min-h-screen relative overflow-x-hidden font-body"
     >
+        <!-- Skip Navigation Link for Accessibility (SEO Signal) -->
+        <a
+            href="#main-content"
+            class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-white focus:rounded"
+        >
+            Skip to main content
+        </a>
+
         <!-- Space Background -->
-        <div class="space-bg"></div>
-        <div class="stars" id="stars"></div>
+        <div class="space-bg" aria-hidden="true"></div>
+        <div class="stars" id="stars" aria-hidden="true"></div>
 
         {% include "partials/header.html" %}
 
+        <!-- Main Content with Semantic HTML & ARIA Landmarks -->
         <main
+            id="main-content"
             class="container mx-auto px-6 py-8 space-y-8 animate-fade-slide-up"
+            role="main"
+            aria-label="Main content"
         >
             {% block content %}{% endblock %}
         </main>
 
         {% include "partials/footer.html" %}
 
+        <!-- Scripts: Load Third-Party Scripts with Deferred Execution -->
         <!-- Chart.js -->
-        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
+        <script
+            src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"
+            defer
+        ></script>
 
         <!-- Lucide Icons -->
-        <script src="https://unpkg.com/lucide@latest"></script>
+        <script src="https://unpkg.com/lucide@0.577.0" defer></script>
 
         <!-- HTMX for partial page updates -->
-        <script src="https://unpkg.com/htmx.org@2.0.0"></script>
+        <script src="https://unpkg.com/htmx.org@2.0.0" defer></script>
 
-        <script src="/js/dashboard.js"></script>
-        <script src="/js/interactions.js"></script>
+        <!-- Custom Scripts (execute after third-party libs) -->
+        <script src="/js/dashboard.js" defer></script>
+        <script src="/js/interactions.js" defer></script>
+
+        {% block scripts_extra %}{% endblock %}
     </body>
 </html>

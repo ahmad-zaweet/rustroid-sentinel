@@ -44,7 +44,7 @@ pub fn build_router(state: AppState, timeout: Duration) -> Router {
             "'unsafe-inline'",
             "https://cdn.tailwindcss.com",
             "https://cdn.jsdelivr.net",
-            "https://unpkg.com/lucide@latest",
+            "https://unpkg.com/lucide@0.577.0",
             "https://unpkg.com/htmx.org@2.0.0",
         ])
         .style_src(vec![
