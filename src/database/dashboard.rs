@@ -34,6 +34,25 @@ impl std::fmt::Display for DashboardStats {
     }
 }
 
+/// Query parameters for fetching paginated approaches.
+#[derive(Debug, Default, Clone)]
+pub struct ApproachQueryParams<'a> {
+    /// Page number (1-indexed).
+    pub page: u32,
+    /// Number of items per page.
+    pub page_size: u32,
+    /// Optional start date for filtering.
+    pub start_date: Option<NaiveDate>,
+    /// Optional end date for filtering.
+    pub end_date: Option<NaiveDate>,
+    /// Optional hazard classification filter.
+    pub hazard_class: Option<&'a str>,
+    /// Optional sort column key: "date", "velocity", "distance", "name", "hazard".
+    pub sort_by: Option<&'a str>,
+    /// Optional sort direction: "asc" or "desc" (default "desc").
+    pub sort_dir: Option<&'a str>,
+}
+
 impl DashboardRepository {
     /// Gets dashboard statistics including counts of asteroids and approaches.
     ///
@@ -226,11 +245,7 @@ impl DashboardRepository {
     /// # Arguments
     ///
     /// * `pool` - The database connection pool.
-    /// * `page` - Page number (1-indexed).
-    /// * `page_size` - Number of items per page.
-    /// * `start_date` - Optional start date for filtering.
-    /// * `end_date` - Optional end date for filtering.
-    /// * `hazard_class` - Optional hazard classification filter.
+    /// * `params` - Query parameters including pagination, filters, and sorting.
     ///
     /// # Returns
     ///
@@ -241,19 +256,15 @@ impl DashboardRepository {
     /// Returns an error if any query fails.
     pub async fn get_paginated_approaches(
         pool: &PgPool,
-        page: u32,
-        page_size: u32,
-        start_date: Option<NaiveDate>,
-        end_date: Option<NaiveDate>,
-        hazard_class: Option<&str>,
+        params: ApproachQueryParams<'_>,
     ) -> Result<(Vec<ApproachRecord>, i64), sqlx::Error> {
         info!(
             "Fetching paginated approaches - page: {}, size: {}, hazard: {:?}",
-            page, page_size, hazard_class
+            params.page, params.page_size, params.hazard_class
         );
 
-        let offset = ((page - 1) * page_size) as i64;
-        let limit = page_size as i64;
+        let offset = ((params.page - 1) * params.page_size) as i64;
+        let limit = params.page_size as i64;
 
         let mut count_query: sqlx::QueryBuilder<sqlx::Postgres> = sqlx::QueryBuilder::new(
             r#"
@@ -280,14 +291,14 @@ impl DashboardRepository {
             "#,
         );
 
-        if let Some(start) = start_date {
+        if let Some(start) = params.start_date {
             count_query.push(" AND a.close_approach_date >= ");
             count_query.push_bind(start);
             data_query.push(" AND a.close_approach_date >= ");
             data_query.push_bind(start);
         }
 
-        if let Some(end) = end_date {
+        if let Some(end) = params.end_date {
             let next_day = end
                 .checked_add_days(chrono::Days::new(1))
                 .expect("date overflow");
@@ -297,7 +308,7 @@ impl DashboardRepository {
             data_query.push_bind(next_day);
         }
 
-        if let Some(hazard) = hazard_class {
+        if let Some(hazard) = params.hazard_class {
             count_query.push(" AND a.hazard_classification = ");
             count_query.push_bind(hazard);
             data_query.push(" AND a.hazard_classification = ");
@@ -306,7 +317,21 @@ impl DashboardRepository {
 
         let total: (i64,) = count_query.build_query_as().fetch_one(pool).await?;
 
-        data_query.push(" ORDER BY a.close_approach_date DESC, a.created_at DESC");
+        let sort_col = match params.sort_by {
+            Some("velocity") => "a.velocity_km_per_h",
+            Some("distance") => "a.miss_distance_km",
+            Some("name") => "ast.name",
+            Some("hazard") => "a.hazard_classification",
+            _ => "a.close_approach_date",
+        };
+        let sort_order = match params.sort_dir {
+            Some("asc") => "ASC",
+            _ => "DESC",
+        };
+        data_query.push(format!(
+            " ORDER BY {} {}, a.created_at DESC",
+            sort_col, sort_order
+        ));
         data_query.push(" LIMIT ");
         data_query.push_bind(limit);
         data_query.push(" OFFSET ");

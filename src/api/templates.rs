@@ -72,6 +72,8 @@ pub struct ApproachesTableTemplate {
     pub end_date_value: String,
     pub is_first_page: bool,
     pub is_last_page: bool,
+    pub sort_by: String,
+    pub sort_dir: String,
 }
 
 impl IntoResponse for ApproachesTableTemplate {

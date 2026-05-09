@@ -1,11 +1,10 @@
 /**
- * Rustroid Sentinel - Interactive Effects
- * Spotlight, animations, and accessibility utilities
- * Aceternity-inspired + Apple Glassmorphism
+ * Rustroid Sentinel — Interactive Effects
+ * Sentinel Prime 2026
  */
 
 // ============================================
-// Spotlight Hover Effect (Aceternity-inspired)
+// Spotlight Hover Effect — teal variant
 // ============================================
 function initSpotlightEffects() {
   const spotlightCards = document.querySelectorAll(
@@ -21,16 +20,14 @@ function initSpotlightEffects() {
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
 
-      // Update CSS custom properties for spotlight position
       spotlight.style.setProperty("--mouse-x", `${x}px`);
       spotlight.style.setProperty("--mouse-y", `${y}px`);
 
-      // Create radial gradient following cursor
       spotlight.style.background = `radial-gradient(
-                400px circle at ${x}px ${y}px,
-                rgba(167, 139, 250, 0.12),
-                transparent 40%
-            )`;
+        380px circle at ${x}px ${y}px,
+        rgba(45, 212, 191, 0.07),
+        transparent 40%
+      )`;
     });
 
     card.addEventListener("mouseleave", () => {
@@ -44,7 +41,7 @@ function initSpotlightEffects() {
 }
 
 // ============================================
-// Staggered Entrance Animation
+// Staggered Entrance Animation (IntersectionObserver)
 // ============================================
 function animateEntrance() {
   const elements = document.querySelectorAll(
@@ -55,15 +52,16 @@ function animateEntrance() {
     (entries) => {
       entries.forEach((entry, index) => {
         if (entry.isIntersecting) {
-          const delayClass = `delay-${Math.min(index * 100, 500)}`;
-          entry.target.classList.add("animate-fade-slide-up", delayClass);
+          const delayMs = Math.min(index * 80, 500);
+          entry.target.style.animationDelay = `${delayMs}ms`;
+          entry.target.classList.add("animate-fade-slide-up");
           observer.unobserve(entry.target);
         }
       });
     },
     {
-      threshold: 0.1,
-      rootMargin: "0px 0px -50px 0px",
+      threshold: 0.08,
+      rootMargin: "0px 0px -40px 0px",
     },
   );
 
@@ -71,7 +69,7 @@ function animateEntrance() {
 }
 
 // ============================================
-// SSE Update Animation Trigger
+// SSE Update Animation
 // ============================================
 function triggerUpdateAnimation(elementId) {
   const element = document.getElementById(elementId);
@@ -84,18 +82,14 @@ function triggerUpdateAnimation(elementId) {
 }
 
 // ============================================
-// Loading Skeleton Display
+// Loading Skeleton
 // ============================================
 function showSkeleton(containerId, count = 3) {
   const container = document.getElementById(containerId);
   if (!container) return;
 
   container.innerHTML = Array(count)
-    .fill(
-      `
-        <div class="skeleton h-20 rounded-2xl mb-3"></div>
-    `,
-    )
+    .fill(`<div class="skeleton h-16 rounded-xl mb-2.5"></div>`)
     .join("");
 }
 
@@ -129,20 +123,20 @@ function showToast(message, type = "info") {
 
   const toast = document.createElement("div");
   toast.id = "toast-notification";
-  toast.className = `fixed bottom-6 right-6 ${typeClasses[type]} text-white px-6 py-4 rounded-2xl shadow-glass font-body font-medium text-sm z-50 backdrop-blur-glass border animate-fade-slide-up`;
+  toast.className = `fixed bottom-6 right-6 ${typeClasses[type]} text-white px-5 py-3.5 rounded-xl shadow-glass font-body font-medium text-sm z-50 backdrop-blur-glass border animate-fade-slide-up`;
   toast.innerHTML = `
-        <div class="flex items-center gap-3">
-            <span>${typeIcons[type]}</span>
-            <span>${escapeHtml(message)}</span>
-        </div>
-    `;
+    <div class="flex items-center gap-3">
+      <span>${typeIcons[type]}</span>
+      <span>${escapeHtml(message)}</span>
+    </div>
+  `;
 
   document.body.appendChild(toast);
 
-  // Auto-remove after 5 seconds
   setTimeout(() => {
     toast.style.opacity = "0";
-    toast.style.transform = "translateY(16px)";
+    toast.style.transform = "translateY(14px)";
+    toast.style.transition = "all 0.28s ease";
     setTimeout(() => toast.remove(), 300);
   }, 5000);
 }
@@ -163,26 +157,23 @@ document.addEventListener("DOMContentLoaded", () => {
   initSpotlightEffects();
   animateEntrance();
 
-  // Log reduced motion preference for debugging
   if (prefersReducedMotion()) {
-    console.log("Reduced motion preference detected - animations disabled");
+    console.log("[sentinel] Reduced motion preference detected.");
   }
 });
 
-/**
- * Custom Hazard Dropdown - UI only (HTMX handles the request)
- */
+// ============================================
+// Hazard Dropdown — UI only (HTMX sends the request)
+// ============================================
 document.addEventListener("click", (e) => {
   const dropdown = document.getElementById("hazard-dropdown");
   if (!dropdown) return;
 
-  // Toggle dropdown open/close
   if (e.target.closest("#hazard-dropdown-trigger")) {
     toggleDropdown();
     return;
   }
 
-  // Select an option
   const option = e.target.closest(".hazard-option");
   if (option) {
     const value = option.dataset.value;
@@ -190,7 +181,6 @@ document.addEventListener("click", (e) => {
     return;
   }
 
-  // Close dropdown when clicking outside
   if (!dropdown.contains(e.target)) {
     closeDropdown();
   }
@@ -212,6 +202,7 @@ function toggleDropdown() {
 function closeDropdown() {
   const menu = document.getElementById("hazard-dropdown-menu");
   const trigger = document.getElementById("hazard-dropdown-trigger");
+  if (!menu || !trigger) return;
   menu.classList.remove("open");
   trigger.setAttribute("aria-expanded", "false");
 }
@@ -221,11 +212,9 @@ function selectOption(value) {
   const label = document.getElementById("hazard-dropdown-label");
 
   if (value === "") {
-    // Remove name attribute so HTMX won't send the param
     hiddenInput.removeAttribute("name");
     hiddenInput.value = "";
   } else {
-    // Ensure name attribute is present
     hiddenInput.setAttribute("name", "hazard_class");
     hiddenInput.value = value;
   }
@@ -233,11 +222,9 @@ function selectOption(value) {
   label.textContent = value || "All Hazards";
   closeDropdown();
 
-  // Trigger HTMX request
   hiddenInput.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
-// Export for use in other scripts
 window.RustroidUI = {
   triggerUpdateAnimation,
   showSkeleton,

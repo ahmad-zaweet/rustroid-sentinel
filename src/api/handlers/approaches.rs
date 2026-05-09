@@ -48,11 +48,15 @@ pub async fn approaches(
 
     let (approaches, total_items) = match DashboardRepository::get_paginated_approaches(
         &state.db_pool,
-        params.page,
-        params.page_size,
-        params.start_date,
-        params.end_date,
-        params.hazard_class.as_deref(),
+        crate::database::dashboard::ApproachQueryParams {
+            page: params.page,
+            page_size: params.page_size,
+            start_date: params.start_date,
+            end_date: params.end_date,
+            hazard_class: params.hazard_class.as_deref(),
+            sort_by: None,
+            sort_dir: None,
+        },
     )
     .await
     {

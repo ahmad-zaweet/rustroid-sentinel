@@ -42,6 +42,12 @@ pub struct DashboardFilters {
     /// End date filter.
     #[serde(default, deserialize_with = "empty_string_as_none")]
     pub end_date: Option<NaiveDate>,
+    /// Sort column key: "date", "velocity", "distance", "name", "hazard".
+    #[serde(default, deserialize_with = "empty_string_as_none")]
+    pub sort_by: Option<String>,
+    /// Sort direction: "asc" or "desc".
+    #[serde(default, deserialize_with = "empty_string_as_none")]
+    pub sort_dir: Option<String>,
 }
 
 impl DashboardFilters {
@@ -59,6 +65,16 @@ impl DashboardFilters {
         }
         if let Some(ref end) = self.end_date {
             parts.push(format!("end_date={}", end));
+        }
+        if let Some(ref sort_by) = self.sort_by
+            && !sort_by.is_empty()
+        {
+            parts.push(format!("sort_by={}", sort_by));
+        }
+        if let Some(ref sort_dir) = self.sort_dir
+            && !sort_dir.is_empty()
+        {
+            parts.push(format!("sort_dir={}", sort_dir));
         }
 
         if parts.is_empty() {
@@ -91,11 +107,11 @@ pub async fn render_dashboard(State(state): State<AppState>) -> impl IntoRespons
 
     let (approaches, total_items) = match DashboardRepository::get_paginated_approaches(
         &state.db_pool,
-        page,
-        page_size,
-        None,
-        None,
-        None,
+        crate::database::dashboard::ApproachQueryParams {
+            page,
+            page_size,
+            ..Default::default()
+        },
     )
     .await
     {
@@ -176,11 +192,15 @@ pub async fn dashboard_table(
     // Fetch paginated approaches
     let (approaches, total_items) = match DashboardRepository::get_paginated_approaches(
         &state.db_pool,
-        page,
-        page_size,
-        filters.start_date,
-        filters.end_date,
-        filters.hazard_class.as_deref().filter(|h| !h.is_empty()),
+        crate::database::dashboard::ApproachQueryParams {
+            page,
+            page_size,
+            start_date: filters.start_date,
+            end_date: filters.end_date,
+            hazard_class: filters.hazard_class.as_deref().filter(|h| !h.is_empty()),
+            sort_by: filters.sort_by.as_deref().filter(|s| !s.is_empty()),
+            sort_dir: filters.sort_dir.as_deref().filter(|s| !s.is_empty()),
+        },
     )
     .await
     {
@@ -230,6 +250,14 @@ pub async fn dashboard_table(
     let end_date_value = filters.end_date.map(|d| d.to_string()).unwrap_or_default();
     let is_first_page = page == 1;
     let is_last_page = page == total_pages;
+    let sort_by = filters
+        .sort_by
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "date".to_string());
+    let sort_dir = filters
+        .sort_dir
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "desc".to_string());
 
     Ok::<_, axum::http::StatusCode>(ApproachesTableTemplate {
         approaches,
@@ -246,6 +274,8 @@ pub async fn dashboard_table(
         end_date_value,
         is_first_page,
         is_last_page,
+        sort_by,
+        sort_dir,
     })
 }
 
@@ -267,7 +297,7 @@ fn calculate_page_range(current: u32, total: u32) -> Vec<u32> {
     (start..=end).collect()
 }
 
-/// Build query string from filter values.
+/// Build query string from filter values (excludes sort — sort is appended separately).
 fn build_filter_query_string(
     hazard_class: Option<&String>,
     start_date: Option<&NaiveDate>,

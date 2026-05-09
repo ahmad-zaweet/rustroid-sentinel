@@ -4,9 +4,9 @@
 
 [![pipeline status](https://gitlab.com/AhmadZaweet/rustroid-sentinel/badges/master/pipeline.svg)](https://gitlab.com/AhmadZaweet/rustroid-sentinel/-/commits/master)
 
-![Rust](https://img.shields.io/badge/rust-1.94%2B-orange.svg?style=for-the-badge&logo=rust&logoColor=white)
+![Rust](https://img.shields.io/badge/rust-1.95%2B-orange.svg?style=for-the-badge&logo=rust&logoColor=white)
 ![Axum](https://img.shields.io/badge/axum-%23E0234E.svg?style=for-the-badge)
-![Tokio](https://img.shields.io/badge/tokio-%23007ACC.svg?style=for-the-badge)
+![Tokio](https://img.shields.io/badge/tokio-%23007ACC.svg?style=for-the-badge&logo=tokio)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)
 ![SQLx](https://img.shields.io/badge/sqlx-%23000000.svg?style=for-the-badge&logo=rust&logoColor=white)
 ![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-%23000000.svg?style=for-the-badge&logo=opentelemetry&logoColor=white)
@@ -22,9 +22,7 @@
   - [Local Development Setup](#-local-development-setup)
   - [Running with Docker](#-running-with-docker)
 - [Environment Variables](#-environment-variables)
-- [Available Scripts](#️-available-scripts)
 - [Testing](#-testing)
-- [API Documentation](#-api-documentation)
 - [Contributing](#-contributing)
 - [License](#-license)
 - [Acknowledgments](#-acknowledgments)

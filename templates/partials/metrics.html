@@ -1,63 +1,56 @@
-<!-- Metrics Cards - SSR Partial -->
-<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-    <div
-        class="metric-card group text-center p-5 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/5 hover:border-nebula-purple/30 hover:bg-white/10 transition-all duration-300 hover:scale-105"
-    >
-        <div
-            class="text-2xl font-heading font-bold bg-gradient-to-r from-nebula-purple to-nebula-blue bg-clip-text text-transparent group-hover:from-nebula-blue group-hover:to-nebula-cyan transition-all duration-300"
-            id="metric-rps"
-        >
-            {{ requests_per_second }}
+<!-- Metrics Cards — SSR Partial -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+
+    <div class="metric-card group text-center p-4 rounded-xl bg-white/[0.03] backdrop-blur-sm border border-white/[0.05] hover:border-nebula-cyan/18 transition-all duration-280">
+        <div class="flex items-center justify-center mb-2">
+            <i data-lucide="activity" class="w-3.5 h-3.5 text-nebula-cyan opacity-55"></i>
         </div>
         <div
-            class="text-xs text-text-tertiary font-medium mt-1.5 uppercase tracking-wide"
-        >
-            Requests/sec
+            class="text-xl font-heading font-bold text-nebula-cyan group-hover:text-nebula-blue transition-colors duration-250"
+            id="metric-rps"
+        >{{ requests_per_second }}</div>
+        <div class="text-[10px] font-mono text-text-muted mt-1.5 uppercase tracking-wider">
+            Req / sec
         </div>
     </div>
-    <div
-        class="metric-card group text-center p-5 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/5 hover:border-nebula-purple/30 hover:bg-white/10 transition-all duration-300 hover:scale-105"
-    >
-        <div
-            class="text-2xl font-heading font-bold bg-gradient-to-r from-nebula-purple to-nebula-blue bg-clip-text text-transparent group-hover:from-nebula-blue group-hover:to-nebula-cyan transition-all duration-300 {{ error_rate_class }}"
-            id="metric-error-rate"
-        >
-            {{ error_rate_percent }}
+
+    <div class="metric-card group text-center p-4 rounded-xl bg-white/[0.03] backdrop-blur-sm border border-white/[0.05] hover:border-hazard-high/18 transition-all duration-280">
+        <div class="flex items-center justify-center mb-2">
+            <i data-lucide="alert-circle" class="w-3.5 h-3.5 text-hazard-high opacity-55"></i>
         </div>
         <div
-            class="text-xs text-text-tertiary font-medium mt-1.5 uppercase tracking-wide"
-        >
+            class="text-xl font-heading font-bold {{ error_rate_class }} group-hover:opacity-90 transition-opacity duration-250"
+            id="metric-error-rate"
+        >{{ error_rate_percent }}</div>
+        <div class="text-[10px] font-mono text-text-muted mt-1.5 uppercase tracking-wider">
             Error Rate
         </div>
     </div>
-    <div
-        class="metric-card group text-center p-5 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/5 hover:border-nebula-purple/30 hover:bg-white/10 transition-all duration-300 hover:scale-105"
-    >
-        <div
-            class="text-2xl font-heading font-bold bg-gradient-to-r from-nebula-purple to-nebula-blue bg-clip-text text-transparent group-hover:from-nebula-blue group-hover:to-nebula-cyan transition-all duration-300"
-            id="metric-latency"
-        >
-            {{ avg_response_time_ms }}
+
+    <div class="metric-card group text-center p-4 rounded-xl bg-white/[0.03] backdrop-blur-sm border border-white/[0.05] hover:border-nebula-blue/18 transition-all duration-280">
+        <div class="flex items-center justify-center mb-2">
+            <i data-lucide="timer" class="w-3.5 h-3.5 text-nebula-blue opacity-55"></i>
         </div>
         <div
-            class="text-xs text-text-tertiary font-medium mt-1.5 uppercase tracking-wide"
-        >
+            class="text-xl font-heading font-bold text-nebula-blue group-hover:text-nebula-cyan transition-colors duration-250"
+            id="metric-latency"
+        >{{ avg_response_time_ms }}</div>
+        <div class="text-[10px] font-mono text-text-muted mt-1.5 uppercase tracking-wider">
             Avg Latency
         </div>
     </div>
-    <div
-        class="metric-card group text-center p-5 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/5 hover:border-nebula-purple/30 hover:bg-white/10 transition-all duration-300 hover:scale-105"
-    >
-        <div
-            class="text-2xl font-heading font-bold bg-gradient-to-r from-nebula-purple to-nebula-blue bg-clip-text text-transparent group-hover:from-nebula-blue group-hover:to-nebula-cyan transition-all duration-300"
-            id="metric-db-qps"
-        >
-            {{ db_queries_per_second }}
+
+    <div class="metric-card group text-center p-4 rounded-xl bg-white/[0.03] backdrop-blur-sm border border-white/[0.05] hover:border-nebula-purple/18 transition-all duration-280">
+        <div class="flex items-center justify-center mb-2">
+            <i data-lucide="database" class="w-3.5 h-3.5 text-nebula-purple opacity-55"></i>
         </div>
         <div
-            class="text-xs text-text-tertiary font-medium mt-1.5 uppercase tracking-wide"
-        >
-            DB Queries/sec
+            class="text-xl font-heading font-bold text-nebula-purple group-hover:text-nebula-blue transition-colors duration-250"
+            id="metric-db-qps"
+        >{{ db_queries_per_second }}</div>
+        <div class="text-[10px] font-mono text-text-muted mt-1.5 uppercase tracking-wider">
+            DB / sec
         </div>
     </div>
+
 </div>
