@@ -4,17 +4,20 @@
 
 [![pipeline status](https://gitlab.com/AhmadZaweet/rustroid-sentinel/badges/master/pipeline.svg)](https://gitlab.com/AhmadZaweet/rustroid-sentinel/-/commits/master)
 
-![Rust](https://img.shields.io/badge/rust-1.95%2B-orange.svg?style=for-the-badge&logo=rust&logoColor=white)
-![Axum](https://img.shields.io/badge/axum-%23E0234E.svg?style=for-the-badge)
-![Tokio](https://img.shields.io/badge/tokio-%23007ACC.svg?style=for-the-badge&logo=tokio)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)
-![SQLx](https://img.shields.io/badge/sqlx-%23000000.svg?style=for-the-badge&logo=rust&logoColor=white)
-![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-%23000000.svg?style=for-the-badge&logo=opentelemetry&logoColor=white)
-![Serenity](https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white)
+![Rust](https://img.shields.io/badge/rust-1.95%2B-orange.svg?style=flat&logo=rust&logoColor=white)
+![Axum](https://img.shields.io/badge/axum-%23E0234E.svg?style=flat)
+![Tokio](https://img.shields.io/badge/tokio-%23007ACC.svg?style=flat&logo=tokio)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=flat&logo=postgresql&logoColor=white)
+![SQLx](https://img.shields.io/badge/sqlx-%23000000.svg?style=flat&logo=&logoColor=white)
+![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-%23000000.svg?style=flat&logo=opentelemetry&logoColor=white)
+
+[![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?style=flat&logo=discord&logoColor=white)](https://discord.gg/GHT55B3Mdp)
+[![Live Deployment](https://img.shields.io/badge/Render-Live-success?style=flat&logo=render&logoColor=white)](https://rustroid-sentinel.onrender.com/)
 
 ## Table of Contents
 
 - [Overview](#-overview)
+- [Discord Community](#-discord-community)
 - [Key Objectives](#-key-objectives)
 - [Project Structure](#-project-structure)
 - [Getting Started](#-getting-started)
@@ -34,6 +37,10 @@
 Rustroid Sentinel is a high-performance backend system built to directly integrate with the NASA NeoWs API, continually extracting and analyzing data on potentially hazardous near-Earth objects (NEOs). Built entirely in Rust using the `tokio` ecosystem, the service delivers a lightning-fast, highly concurrent data pipeline designed for demanding operational environments.
 
 This repository showcases production-grade engineering principles. The architecture emphasizes modularity via discrete feature flags (`api`, `alerting`, `metrics`, `etl`), separating operations into independent ETL processes, Axum API serving, and Discord webhook alerting loops. Data integrity is enforced via `sqlx` async migrations and PostgreSQL. It incorporates modern observability through OpenTelemetry (OTLP) tracing and Prometheus metrics, comprehensive testing (`assert-json-diff`, `wiremock`, `testcontainers`), rate limiting (`axum-governor`), HTML templates (`askama`), and strict security header middlewares (`axum-helmet`), demonstrating a high standard of scalability and operational maturity.
+
+## 💬 Discord Community
+
+Join the official [Rustroid Sentinel Discord Server](https://discord.gg/GHT55B3Mdp) to connect with fellow developers, discuss space data pipelines, and receive real-time hazard alerts directly
 
 ## 🎯 Key Objectives
 
