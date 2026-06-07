@@ -60,26 +60,6 @@ pub async fn run_server(
         grafana_cloud_prometheus_config,
     );
 
-    #[cfg(feature = "api")]
-    if state.config.cache.enabled {
-        use axum_response_cache::CacheLayer;
-        use cached::stores::TimedSizedCache;
-
-        info!(
-            ttl_seconds = state.config.cache.ttl_seconds,
-            max_size = state.config.cache.max_size,
-            "Enabling API response caching"
-        );
-
-        let _cache_layer = CacheLayer::with(TimedSizedCache::with_size_and_lifespan(
-            state.config.cache.max_size,
-            std::time::Duration::from_secs(state.config.cache.ttl_seconds),
-        ));
-
-        // Note: Full cache implementation would require additional router refactoring
-        // For now, caching is initialized but not applied
-    }
-
     info!(
         name = %service_config.name,
         version = %version,
@@ -91,7 +71,7 @@ pub async fn run_server(
     );
 
     let listener = TcpListener::bind(addr).await?;
-    let app = router::build_router(state, timeout);
+    let app = router::build_router(state, timeout, server_config.clone());
 
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())

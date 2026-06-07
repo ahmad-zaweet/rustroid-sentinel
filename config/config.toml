@@ -72,13 +72,6 @@ rate_limit_requests = 2
 # The sliding window period (in seconds) for rate limits.
 rate_limit_period_seconds = 60
 
-[server.cache]
-# Enable or disable caching for API endpoints and dashboard.
-enabled = true
-# Time-to-live for cached responses in seconds (5 minutes).
-ttl_seconds = 300
-# Maximum number of responses to keep in cache.
-max_size = 100
 
 # ------------------------------------------------------------------------------
 # Prometheus/OTLP Metrics (Optional)

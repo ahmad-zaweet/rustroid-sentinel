@@ -21,7 +21,6 @@ async fn test_health_endpoint_returns_200() -> Result<()> {
             request_timeout_seconds: 30,
             rate_limit_requests: 100,
             rate_limit_period_seconds: 60,
-            cache: Default::default(),
         },
         "1.0.0".to_string(),
         None,

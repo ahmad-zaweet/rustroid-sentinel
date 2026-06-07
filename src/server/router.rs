@@ -3,9 +3,10 @@
 //! This module handles router setup and configuration.
 
 use axum::{Router, extract::State, http::StatusCode, middleware, routing::get};
-use axum_governor::GovernorLayer;
+use axum_governor::{GovernorConfigBuilder, GovernorLayer, Quota, extractor::PeerIp};
 use axum_helmet::Helmet;
 use real::RealIpLayer;
+use std::num::NonZeroU32;
 use std::time::Duration;
 use tower_http::{
     compression::CompressionLayer, limit::RequestBodyLimitLayer, services::ServeDir,
@@ -13,6 +14,7 @@ use tower_http::{
 };
 
 use crate::api;
+use crate::settings::ServerConfig;
 
 use super::middleware::{
     api_cache_control, cors_middleware, health_check_handler, metrics_middleware_wrapper,
@@ -21,7 +23,7 @@ use super::middleware::{
 use super::state::AppState;
 
 /// Builds the main application router with all middleware and routes.
-pub fn build_router(state: AppState, timeout: Duration) -> Router {
+pub fn build_router(state: AppState, timeout: Duration, server_config: ServerConfig) -> Router {
     // API router with cache control
     let api_router = Router::new()
         .merge(api::routes::api_router())
@@ -63,9 +65,19 @@ pub fn build_router(state: AppState, timeout: Duration) -> Router {
 
     let helmet = Helmet::new().add(csp);
 
+    let cfg = GovernorConfigBuilder::default()
+        .with_extractor(PeerIp::default())
+        .expect_connect_info()
+        .quota_default(Quota::requests_per_minute(
+            NonZeroU32::new(server_config.rate_limit_requests as u32)
+                .expect("rate_limit_requests must be non-zero"),
+        ))
+        .finish()
+        .unwrap();
+
     Router::new()
         .layer(RealIpLayer::default())
-        .layer(GovernorLayer::default())
+        .layer(GovernorLayer::new(cfg))
         .route("/", get(crate::api::handlers::render_dashboard))
         .route("/health", get(health_check_handler))
         .nest("/api", api_router)

@@ -162,7 +162,6 @@ rustroid-sentinel/
 | `SERVICE__SERVER__REQUEST_TIMEOUT_SECONDS`   | API Request Timeout                  | `300`                                  |
 | `SERVICE__SERVER__RATE_LIMIT_REQUESTS`       | Total allowed requests               | `100`                                  |
 | `SERVICE__SERVER__RATE_LIMIT_PERIOD_SECONDS` | Rate window duration                 | `60`                                   |
-| `SERVICE__SERVER__CACHE__ENABLED`            | Toggle endpoint response cache       | `true`                                 |
 | `SERVICE__NASA__API_KEY`                     | NASA NeoWs API authentication key    | `DEMO_KEY`                             |
 | `SERVICE__NASA__BASE_URL`                    | NASA Open API Base URL               | `https://api.nasa.gov`                 |
 | `SERVICE__DISCORD__WEBHOOK_URL`              | Discord webhook for threshold alerts | `https://discord.com/api/webhooks/...` |

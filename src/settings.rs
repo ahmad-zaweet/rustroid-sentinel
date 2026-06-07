@@ -17,7 +17,7 @@
 //! | `discord` | Discord webhook | `webhook_url`, `timeout` |
 //! | `http` | HTTP client settings | `user_agent`, `timeout`, `gzip` |
 //! | `etl` | ETL process settings | `fetch_interval_hours`, `batch_size` |
-//! | `server` | HTTP server settings | `rate_limit`, `cache` |
+//! | `server` | HTTP server settings | `rate_limit` |
 //! | `prometheus` | Metrics configuration | `url`, `query_url`, `interval` |
 //!
 //! ## Example Configuration
@@ -227,35 +227,6 @@ pub struct ServerConfig {
     /// Rate limit period in seconds.
     #[serde(default = "default_rate_limit_period")]
     pub rate_limit_period_seconds: u64,
-    /// Configuration for API response caching.
-    #[serde(default)]
-    pub cache: CacheConfig,
-}
-
-/// Configuration for API response caching.
-#[derive(Debug, Deserialize, Clone, Default)]
-pub struct CacheConfig {
-    /// Enable or disable caching globally.
-    #[serde(default = "default_cache_enabled")]
-    pub enabled: bool,
-    /// Time-to-live for cached responses in seconds.
-    #[serde(default = "default_cache_ttl")]
-    pub ttl_seconds: u64,
-    /// Maximum number of unique responses allowed in the cache.
-    #[serde(default = "default_cache_size")]
-    pub max_size: usize,
-}
-
-fn default_cache_enabled() -> bool {
-    true
-}
-
-fn default_cache_ttl() -> u64 {
-    300 // 5 minutes
-}
-
-fn default_cache_size() -> usize {
-    100
 }
 
 fn default_request_timeout() -> u64 {
@@ -431,9 +402,6 @@ mod tests {
         assert_eq!(default_version(), env!("CARGO_PKG_VERSION"));
         assert_eq!(default_max_concurrent_requests(), 5);
         assert!(default_enable_gzip());
-        assert!(default_cache_enabled());
-        assert_eq!(default_cache_ttl(), 300);
-        assert_eq!(default_cache_size(), 100);
         assert_eq!(default_request_timeout(), 300);
         assert_eq!(default_rate_limit_requests(), 100);
         assert_eq!(default_rate_limit_period(), 60);
