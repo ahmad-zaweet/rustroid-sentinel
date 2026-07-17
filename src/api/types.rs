@@ -141,6 +141,8 @@ pub struct ApproachRecord {
     pub hazard_classification: String,
     /// Whether NASA designates this as a Potentially Hazardous Asteroid.
     pub is_potentially_hazardous: bool,
+    /// Average (midpoint) estimated diameter in kilometers.
+    pub estimated_diameter_avg_km: f64,
 }
 
 /// Data point for velocity time-series chart.

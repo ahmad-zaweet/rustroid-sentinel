@@ -13,7 +13,7 @@
 //! ## Example
 //!
 //! ```rust,no_run
-//! use rustroid_sentinel::alert::discord::DiscordClient;
+//! use rustroid_sentinel::alert::discord::{AsteroidApproachAlert, DiscordClient};
 //! use rustroid_sentinel::settings::DiscordConfig;
 //! use chrono::NaiveDate;
 //!
@@ -27,14 +27,15 @@
 //! let client = DiscordClient::new(config);
 //! let date = NaiveDate::from_ymd_opt(2024, 6, 15).unwrap();
 //!
-//! client.send_alert(
-//!     "Hazardous Asteroid",
-//!     "2024 AB12",
-//!     "High",
-//!     &date,
-//!     150_000.0,  // km
-//!     72_000.0,   // km/h
-//! ).await?;
+//! client.send_alert(AsteroidApproachAlert {
+//!     title: "Hazardous Asteroid",
+//!     asteroid_name: "2024 AB12",
+//!     hazard: "High",
+//!     date: &date,
+//!     miss_distance_km: 150_000.0,
+//!     velocity_km_h: 72_000.0,
+//!     diameter_avg_km: 0.75,
+//! }).await?;
 //! # Ok(())
 //! # }
 //! ```
@@ -55,6 +56,24 @@ use tracing::{info, warn};
 pub struct DiscordClient {
     http: Arc<Http>,
     config: DiscordConfig,
+}
+
+/// Data describing a single asteroid close-approach alert.
+pub struct AsteroidApproachAlert<'a> {
+    /// The alert title (e.g., "Hazardous Asteroid Approach").
+    pub title: &'a str,
+    /// The name of the asteroid.
+    pub asteroid_name: &'a str,
+    /// The hazard classification string.
+    pub hazard: &'a str,
+    /// The close approach date.
+    pub date: &'a chrono::NaiveDate,
+    /// The miss distance in kilometers.
+    pub miss_distance_km: f64,
+    /// The relative velocity in km/h.
+    pub velocity_km_h: f64,
+    /// The average (midpoint) estimated diameter in kilometers.
+    pub diameter_avg_km: f64,
 }
 
 impl DiscordClient {
@@ -88,24 +107,14 @@ impl DiscordClient {
     ///
     /// # Arguments
     ///
-    /// * `title` - The alert title (e.g., "Hazardous Asteroid Approach").
-    /// * `asteroid_name` - The name of the asteroid.
-    /// * `hazard` - The hazard classification string.
-    /// * `date` - The close approach date.
-    /// * `miss_distance_km` - The miss distance in kilometers.
-    /// * `velocity_km_h` - The relative velocity in km/h.
+    /// * `alert` - The asteroid approach data to format into the embed.
     ///
     /// # Errors
     ///
     /// Returns a `serenity::Error` if the webhook execution fails.
     pub async fn send_alert(
         &self,
-        title: &str,
-        asteroid_name: &str,
-        hazard: &str,
-        date: &chrono::NaiveDate,
-        miss_distance_km: f64,
-        velocity_km_h: f64,
+        alert: AsteroidApproachAlert<'_>,
     ) -> Result<(), serenity::Error> {
         if self.config.webhook_url.is_empty() {
             warn!("Discord webhook URL is empty, skipping alert.");
@@ -115,7 +124,7 @@ impl DiscordClient {
         let webhook = Webhook::from_url(&self.http, &self.config.webhook_url).await?;
 
         // Modern Hex Color Mapping
-        let color = match hazard {
+        let color = match alert.hazard {
             "Critical" => Colour::from_rgb(255, 69, 58), // System Red
             "High" => Colour::from_rgb(255, 159, 10),    // System Orange
             "Medium" => Colour::from_rgb(255, 214, 10),  // System Yellow
@@ -123,25 +132,29 @@ impl DiscordClient {
         };
 
         // Format numbers for readability
-        let miss_str = if miss_distance_km >= 1_000_000.0 {
-            format!("{:.2}M km", miss_distance_km / 1_000_000.0)
+        let miss_str = if alert.miss_distance_km >= 1_000_000.0 {
+            format!("{:.2}M km", alert.miss_distance_km / 1_000_000.0)
         } else {
-            format!("{:.0} km", miss_distance_km)
+            format!("{:.0} km", alert.miss_distance_km)
         };
 
-        let vel_str = format!("{:.0} km/h", velocity_km_h);
+        let vel_str = format!("{:.0} km/h", alert.velocity_km_h);
+        let diameter_str = format!("{:.3} km", alert.diameter_avg_km);
 
         let embed = CreateEmbed::new()
-            .title(format!("{} : {}", title, asteroid_name))
-            .description(format!("🎯 **Target Identification:** `{}`", asteroid_name))
+            .title(format!("{} : {}", alert.title, alert.asteroid_name))
+            .description(format!(
+                "🎯 **Target Identification:** `{}`",
+                alert.asteroid_name
+            ))
             .color(color)
             .thumbnail("https://img.icons8.com/isometric/512/asteroid.png")
-            .field("📡 Status", format!("**{}**", hazard), true)
-            .field("📅 Approach Date", format!("`{}`", date), true)
+            .field("📡 Status", format!("**{}**", alert.hazard), true)
+            .field("📅 Approach Date", format!("`{}`", alert.date), true)
             .field("\u{200B}", "\u{200B}", true) // Spacer for 3-column layout
             .field("📏 Miss Distance", format!("`{}`", miss_str), true)
             .field("🚀 Velocity", format!("`{}`", vel_str), true)
-            .field("\u{200B}", "\u{200B}", true) // Spacer
+            .field("🪨 Est. Diameter", format!("`{}`", diameter_str), true)
             .footer(
                 serenity::builder::CreateEmbedFooter::new("Rustroid Sentinel")
                     .icon_url("https://img.icons8.com/color/48/shield.png"),
@@ -154,7 +167,7 @@ impl DiscordClient {
         let builder = ExecuteWebhook::new()
             .username("Rustroid Sentinel Central")
             .avatar_url("https://img.icons8.com/color/96/artificial-intelligence.png")
-            .content(if hazard == "Critical" || hazard == "High" {
+            .content(if alert.hazard == "Critical" || alert.hazard == "High" {
                 "🚨 **HIGH ALERT: Potential Impact Risk Detected** 🚨"
             } else {
                 "ℹ️ **Observation: New Near-Earth Object approach recorded**"
@@ -163,7 +176,7 @@ impl DiscordClient {
 
         webhook.execute(&self.http, false, builder).await?;
 
-        info!("Sent modernized Discord alert for {}", asteroid_name);
+        info!("Sent modernized Discord alert for {}", alert.asteroid_name);
 
         Ok(())
     }
@@ -185,7 +198,15 @@ mod tests {
         let date = chrono::NaiveDate::from_ymd_opt(2024, 6, 15).unwrap();
 
         let result = client
-            .send_alert("Test", "Asteroid", "High", &date, 100.0, 100.0)
+            .send_alert(AsteroidApproachAlert {
+                title: "Test",
+                asteroid_name: "Asteroid",
+                hazard: "High",
+                date: &date,
+                miss_distance_km: 100.0,
+                velocity_km_h: 100.0,
+                diameter_avg_km: 0.5,
+            })
             .await;
 
         assert!(

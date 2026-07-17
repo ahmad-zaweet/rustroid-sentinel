@@ -18,7 +18,7 @@ large_enum_variant = "warn"
 [dependencies]
 # Async runtime and web framework
 axum = { version = "0.8.9", features = ["http2"], optional = true }
-tokio = { version = "1.52.*", features = [
+tokio = { version = "1.53.*", features = [
     "rt-multi-thread",
     "macros",
     "net",
@@ -32,7 +32,7 @@ tower = { version = "0.5.*", features = [
     "timeout",
     "util",
 ], optional = true }
-tower-http = { version = "0.6.*", features = [
+tower-http = { version = "0.7.*", features = [
     "cors",
     "trace",
     "fs",
@@ -86,7 +86,7 @@ bytes = "1"
 chrono = { version = "0.4.*", features = ["serde"] }
 
 # UUIDs
-uuid = { version = "1.23.*", features = ["v4", "v5", "serde"] }
+uuid = { version = "1.24.*", features = ["v4", "v5", "serde"] }
 
 # Logging and tracing
 tracing = "0.1.*"
@@ -149,7 +149,7 @@ etl = []
 
 [dev-dependencies]
 # Async testing - Latest stable as of 2026
-tokio = { version = "1.52.*", features = ["full", "test-util"] }
+tokio = { version = "1.53.*", features = ["full", "test-util"] }
 tokio-test = "0.4.5"
 
 # HTTP mocking - Latest stable versions
@@ -157,7 +157,7 @@ wiremock = "0.6.5"
 mockito = "1.7.2"
 
 # Trait mocking - Latest stable
-mockall = "0.14.*"
+mockall = "0.15.*"
 
 # Database testing - Using bollard instead of testcontainers (RUSTSEC issues)
 # testcontainers has dependency vulnerabilities (RUSTSEC-2024-0384 via instant)
@@ -166,7 +166,7 @@ sqlx = { version = "0.9.*", default-features = false, features = ["postgres", "r
 
 # Assertion libraries - Latest stable
 assert-json-diff = "2.0.2"
-insta = { version = "1.47", features = ["json", "redactions"] }
+insta = { version = "1.48", features = ["json", "redactions"] }
 
 # Property-based testing - Latest stable
 proptest = "1.11"

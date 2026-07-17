@@ -2,7 +2,7 @@
 //!
 //! `cargo run --example custom_alert`
 
-use rustroid_sentinel::alert::discord::DiscordClient;
+use rustroid_sentinel::alert::discord::{AsteroidApproachAlert, DiscordClient};
 use rustroid_sentinel::settings::RustroidSentinelConfig;
 
 #[tokio::main]
@@ -22,18 +22,20 @@ async fn main() {
     let date = chrono::NaiveDate::from_ymd_opt(2024, 12, 1).unwrap();
     let miss_distance_km = 1_200_000.0;
     let velocity_km_h = 88_000.0;
+    let diameter_avg_km = 0.75;
 
     println!("Attempting to send an alert for {}...", asteroid_name);
 
     match discord_client
-        .send_alert(
-            "⚠️ Hazardous Asteroid Approach",
+        .send_alert(AsteroidApproachAlert {
+            title: "⚠️ Hazardous Asteroid Approach",
             asteroid_name,
-            hazard_level,
-            &date,
+            hazard: hazard_level,
+            date: &date,
             miss_distance_km,
             velocity_km_h,
-        )
+            diameter_avg_km,
+        })
         .await
     {
         Ok(_) => println!("Successfully mocked Discord alert dispatch!"),

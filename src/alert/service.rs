@@ -23,7 +23,7 @@
 //! have been notified. Duplicate alerts are prevented by checking this
 //! table before sending.
 
-use crate::alert::discord::DiscordClient;
+use crate::alert::discord::{AsteroidApproachAlert, DiscordClient};
 use crate::database::DatabasePool;
 use crate::settings::EtlConfig;
 use anyhow::Result;
@@ -79,7 +79,8 @@ impl AlertService {
                 ap.close_approach_date,
                 ap.miss_distance_km,
                 ap.velocity_km_per_h,
-                ap.hazard_classification
+                ap.hazard_classification,
+                ast.estimated_diameter_avg_km
             FROM approaches ap
             JOIN asteroids ast ON ap.asteroid_id = ast.id
             LEFT JOIN alerts al ON ap.id = al.approach_id AND al.alert_type = 'discord'
@@ -112,20 +113,22 @@ impl AlertService {
             let miss_km: f64 = row.try_get("miss_distance_km")?;
             let vel_kmh: f64 = row.try_get("velocity_km_per_h")?;
             let hazard: String = row.try_get("hazard_classification")?;
+            let diameter_avg_km: f64 = row.try_get("estimated_diameter_avg_km")?;
 
             let service = self.clone();
 
             let handle = tokio::spawn(async move {
                 match service
                     .discord
-                    .send_alert(
-                        "⚠️ Hazardous Asteroid Approach",
-                        &name,
-                        &hazard,
-                        &date,
-                        miss_km,
-                        vel_kmh,
-                    )
+                    .send_alert(AsteroidApproachAlert {
+                        title: "⚠️ Hazardous Asteroid Approach",
+                        asteroid_name: &name,
+                        hazard: &hazard,
+                        date: &date,
+                        miss_distance_km: miss_km,
+                        velocity_km_h: vel_kmh,
+                        diameter_avg_km,
+                    })
                     .await
                 {
                     Ok(_) => {

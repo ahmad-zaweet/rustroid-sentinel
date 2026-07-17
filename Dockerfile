@@ -1,4 +1,4 @@
-FROM lukemathwalker/cargo-chef:0.1.77-rust-alpine3.23 AS chef
+FROM lukemathwalker/cargo-chef:0.1.77-rust-alpine3.24 AS chef
 
 WORKDIR /app
 
@@ -42,7 +42,7 @@ RUN strip target/release/rustroid-sentinel
 
 
 ### Step 3 - Run
-FROM alpine:3.23 AS runtime
+FROM alpine:3.24 AS runtime
 WORKDIR /app
 
 # Install runtime dependencies

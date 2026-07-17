@@ -150,6 +150,9 @@
                             {% if sort_by == "distance" %}<i data-lucide="{% if sort_dir == "asc" %}arrow-up{% else %}arrow-down{% endif %}" class="w-3 h-3 flex-shrink-0"></i>{% else %}<i data-lucide="arrow-up-down" class="w-3 h-3 opacity-25 flex-shrink-0"></i>{% endif %}
                         </button>
                     </th>
+                    <th class="px-5 sm:px-7 py-3.5 text-left hidden md:table-cell" scope="col">
+                        <span class="text-[10px] font-mono font-semibold uppercase tracking-wider text-text-muted">Avg. Diameter</span>
+                    </th>
                     <th class="px-5 sm:px-7 py-3.5 text-left" scope="col">
                         <button hx-get="/dashboard/table?page=1{{ query_string }}&sort_by=hazard&sort_dir={% if sort_by == "hazard" && sort_dir == "desc" %}asc{% else %}desc{% endif %}" hx-target="#approaches-container" hx-swap="innerHTML" class="flex items-center gap-1 text-[10px] font-mono font-semibold uppercase tracking-wider cursor-pointer transition-colors {% if sort_by == "hazard" %}text-nebula-cyan{% else %}text-text-muted hover:text-text-secondary{% endif %}">
                             Hazard
@@ -161,7 +164,7 @@
             <tbody class="divide-y divide-white/[0.04]">
                 {% if approaches.is_empty() %}
                 <tr>
-                    <td colspan="5" class="px-7 py-16 text-center">
+                    <td colspan="6" class="px-7 py-16 text-center">
                         <div class="flex flex-col items-center gap-3">
                             <i data-lucide="telescope" class="w-10 h-10 text-text-muted opacity-35"></i>
                             <p class="text-text-tertiary text-sm font-body">No approach data matches your filters</p>
@@ -189,6 +192,9 @@
                     </td>
                     <td class="px-5 sm:px-7 py-4 font-mono text-xs text-nebula-blue font-semibold hidden md:table-cell">
                         {{ format!("{:.2}", approach.miss_distance_km / 1000000.0) }}M km
+                    </td>
+                    <td class="px-5 sm:px-7 py-4 font-mono text-xs text-nebula-purple font-semibold hidden md:table-cell">
+                        {{ format!("{:.3}", approach.estimated_diameter_avg_km) }} km
                     </td>
                     <td class="px-5 sm:px-7 py-4">
                         {% if approach.hazard_classification == "Critical" %}

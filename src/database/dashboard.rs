@@ -118,7 +118,8 @@ impl DashboardRepository {
                 a.velocity_km_per_h,
                 a.miss_distance_km,
                 a.hazard_classification,
-                ast.is_potentially_hazardous
+                ast.is_potentially_hazardous,
+                ast.estimated_diameter_avg_km
             FROM approaches a
             JOIN asteroids ast ON a.asteroid_id = ast.id
             ORDER BY a.close_approach_date DESC, a.created_at DESC
@@ -284,7 +285,8 @@ impl DashboardRepository {
                 a.velocity_km_per_h,
                 a.miss_distance_km,
                 a.hazard_classification,
-                ast.is_potentially_hazardous
+                ast.is_potentially_hazardous,
+                ast.estimated_diameter_avg_km
             FROM approaches a
             JOIN asteroids ast ON a.asteroid_id = ast.id
             WHERE 1=1
