@@ -65,7 +65,7 @@ reqwest = { version = "0.13.*", default-features = false, features = [
     "rustls",
     "stream"
 ] }
-reqwest-middleware = "0.5.*"
+reqwest-middleware = { version = "0.5.*", features = ["json"] }
 reqwest-retry = "0.9.*"
 
 # Stream utilities
@@ -146,6 +146,9 @@ metrics = [
     "dep:tracing-opentelemetry"
 ]
 etl = []
+# Enables PgListenSource, which listens for LISTEN/NOTIFY on DatabaseConfig.listen_url
+# instead of relying solely on the internal webhook ingest endpoint.
+pg-listen = []
 
 [dev-dependencies]
 # Async testing - Latest stable as of 2026

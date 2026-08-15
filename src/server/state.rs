@@ -4,7 +4,10 @@
 
 use sqlx::PgPool;
 use std::sync::Arc;
+use std::sync::atomic::AtomicUsize;
+use tokio::sync::broadcast;
 
+use crate::events::HazardEvent;
 use crate::settings::ServerConfig;
 
 /// Application state shared across all HTTP handlers.
@@ -20,16 +23,30 @@ pub struct AppState {
     pub prometheus_config: Option<crate::settings::PrometheusConfig>,
     /// Optional OTLP/Prometheus Remote Write config for Grafana Cloud.
     pub grafana_cloud_prometheus_config: Option<crate::settings::GrafanaCloudPrometheusConfig>,
+    /// Fan-out sender for hazard events. `/api/events/hazards` subscribes to
+    /// it per-connection; `/internal/events` and (with `pg-listen`) the
+    /// Postgres listener publish to it.
+    pub events_tx: broadcast::Sender<HazardEvent>,
+    /// Shared secret required on `X-Internal-Token` for `/internal/events`.
+    /// Loaded from the `INTERNAL_EVENT_TOKEN` env var only, never committed
+    /// config.
+    pub internal_event_token: Arc<str>,
+    /// Count of currently-connected SSE subscribers, used to enforce
+    /// `ServerConfig.max_hazard_subscribers`.
+    pub hazard_subscriber_count: Arc<AtomicUsize>,
 }
 
 impl AppState {
     /// Creates a new application state.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         db_pool: PgPool,
         config: ServerConfig,
         version: String,
         prometheus_config: Option<crate::settings::PrometheusConfig>,
         grafana_cloud_prometheus_config: Option<crate::settings::GrafanaCloudPrometheusConfig>,
+        events_tx: broadcast::Sender<HazardEvent>,
+        internal_event_token: Arc<str>,
     ) -> Self {
         Self {
             db_pool,
@@ -37,6 +54,9 @@ impl AppState {
             config: Arc::new(config),
             prometheus_config,
             grafana_cloud_prometheus_config,
+            events_tx,
+            internal_event_token,
+            hazard_subscriber_count: Arc::new(AtomicUsize::new(0)),
         }
     }
 }

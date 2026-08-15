@@ -17,6 +17,11 @@ log_level = "info"
 [database]
 # Database connection string (overridden in runtime by .env)
 url = "..."
+# Optional direct (non-pooled) connection string, required for LISTEN/NOTIFY
+# on Neon (the default `-pooler` endpoint is PgBouncer transaction-mode and
+# does not support LISTEN). Set via SERVICE__DATABASE__LISTEN_URL. Leave unset
+# outside the pg-listen feature.
+# listen_url = "..."
 # Maximum connection pool size to PostgreSQL.
 max_connections = 10
 # Minimum idle connection pool size.
@@ -63,6 +68,10 @@ lookahead_days = 7
 alert_cooldown_hours = 24
 # Records processed in a single DB persistence batch
 batch_size = 100
+# Webhook the `load` command POSTs newly-inserted hazardous approaches to,
+# so the SSE dashboard updates without polling. Leave unset to skip
+# publishing (the database remains the source of truth either way).
+# internal_events_url = "http://localhost:8080/internal/events"
 
 [server]
 # Timeout for incoming client requests before Axum closes the connection.
@@ -71,6 +80,10 @@ request_timeout_seconds = 300
 rate_limit_requests = 2
 # The sliding window period (in seconds) for rate limits.
 rate_limit_period_seconds = 60
+# Maximum concurrent /api/events/hazards SSE subscribers.
+max_hazard_subscribers = 100
+# Rate limit for POST /internal/events (single trusted caller, tighter bucket).
+internal_event_rate_limit_requests = 30
 
 
 # ------------------------------------------------------------------------------

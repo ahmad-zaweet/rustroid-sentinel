@@ -1,14 +1,13 @@
 //! Stats endpoint integration tests.
 
-use anyhow::Result;
-use axum::{body::Body, http::{Request, StatusCode}};
-use tower::ServiceExt; // for `oneshot` and `ready`
-use rustroid_sentinel::{
-    api::routes::api_router,
-    server::AppState,
-    settings::ServerConfig,
-};
 use crate::common::database::TestDatabase;
+use anyhow::Result;
+use axum::{
+    body::Body,
+    http::{Request, StatusCode},
+};
+use rustroid_sentinel::{api::routes::api_router, server::AppState, settings::ServerConfig};
+use tower::ServiceExt; // for `oneshot` and `ready`
 
 #[tokio::test]
 async fn test_stats_endpoint_returns_asteroid_counts() -> Result<()> {
@@ -16,7 +15,7 @@ async fn test_stats_endpoint_returns_asteroid_counts() -> Result<()> {
     let db = TestDatabase::new().await?;
 
     // Seed test data
-    sqlx::query("INSERT INTO asteroids (id, neo_reference_id, name, absolute_magnitude, estimated_diameter_min_km, estimated_diameter_max_km, is_potentially_hazardous, is_sentry_object, jpl_url, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())")
+    sqlx::query("INSERT INTO asteroids (id, neo_reference_id, name, absolute_magnitude, estimated_diameter_min_km, estimated_diameter_max_km, is_potentially_hazardous, is_sentry_object, nasa_jpl_url, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())")
         .bind(uuid::Uuid::new_v4())
         .bind("20240101")
         .bind("Test Asteroid")
@@ -35,10 +34,14 @@ async fn test_stats_endpoint_returns_asteroid_counts() -> Result<()> {
             request_timeout_seconds: 30,
             rate_limit_requests: 100,
             rate_limit_period_seconds: 60,
+            max_hazard_subscribers: 100,
+            internal_event_rate_limit_requests: 30,
         },
         "1.0.0".to_string(),
         None,
         None,
+        rustroid_sentinel::events::channel(),
+        "test-token".into(),
     );
 
     let app = api_router().with_state(app_state);
@@ -77,10 +80,14 @@ async fn test_stats_endpoint_empty_database() -> Result<()> {
             request_timeout_seconds: 30,
             rate_limit_requests: 100,
             rate_limit_period_seconds: 60,
+            max_hazard_subscribers: 100,
+            internal_event_rate_limit_requests: 30,
         },
         "1.0.0".to_string(),
         None,
         None,
+        rustroid_sentinel::events::channel(),
+        "test-token".into(),
     );
 
     let app = api_router().with_state(app_state);

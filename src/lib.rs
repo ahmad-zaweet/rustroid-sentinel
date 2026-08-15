@@ -53,6 +53,7 @@ pub mod api;
 pub mod cli;
 pub mod database;
 pub mod error;
+pub mod events;
 #[cfg(feature = "metrics")]
 pub mod metrics;
 pub mod models;

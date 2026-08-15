@@ -22,6 +22,7 @@ use axum::{Router, routing::get};
 /// | GET    | `/velocity`     | [`handlers::velocity`]   | Velocity time-series with filtering  |
 /// | GET    | `/approaches`   | [`handlers::approaches`] | Paginated approach records           |
 /// | GET    | `/etl-runs`     | [`handlers::etl_runs`]   | Recent ETL job history               |
+/// | GET    | `/events/hazards` | [`handlers::hazard_events_stream`] | SSE stream of new hazardous approaches |
 ///
 /// # Type Parameters
 ///
@@ -48,6 +49,7 @@ pub fn api_router() -> Router<AppState> {
         .route("/velocity", get(handlers::velocity))
         .route("/approaches", get(handlers::approaches))
         .route("/etl-runs", get(handlers::etl_runs))
+        .route("/events/hazards", get(handlers::hazard_events_stream))
 }
 
 /// Creates the dashboard router with HTMX partial endpoints.

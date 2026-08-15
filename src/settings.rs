@@ -103,6 +103,15 @@ pub struct DatabaseConfig {
     /// The full database connection URL.
     /// Example: "postgresql://user:password@localhost:5432/mydatabase"
     pub url: String,
+    /// Direct (non-pooled) connection URL, required for `LISTEN`/`NOTIFY`.
+    ///
+    /// Neon's default pooled endpoint (`-pooler`) is PgBouncer in transaction
+    /// mode, which does not support `LISTEN`. When set, this bypasses the
+    /// pooler for the dedicated listener connection only; `url` above keeps
+    /// serving the normal pool. Not set on non-serverless/dedicated Postgres
+    /// deployments, where `url` already points at a direct connection.
+    #[serde(default)]
+    pub listen_url: Option<String>,
     /// The maximum number of connections the pool can hold.
     pub max_connections: u32,
     /// The minimum number of idle connections to maintain in the pool.
@@ -115,6 +124,10 @@ impl std::fmt::Debug for DatabaseConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("DatabaseConfig")
             .field("url", &"[REDACTED]")
+            .field(
+                "listen_url",
+                &self.listen_url.as_ref().map(|_| "[REDACTED]"),
+            )
             .field("max_connections", &self.max_connections)
             .field("min_connections", &self.min_connections)
             .field("connect_timeout_seconds", &self.connect_timeout_seconds)
@@ -213,6 +226,56 @@ pub struct EtlConfig {
     pub alert_cooldown_hours: u64,
     /// The number of records to process in a single batch.
     pub batch_size: u32,
+    /// Data retention settings, used by the `prune` CLI command.
+    #[serde(default)]
+    pub retention: RetentionConfig,
+    /// URL of the `POST /internal/events` webhook the `load` command notifies
+    /// after a successful run. When unset, the `load` command skips hazard
+    /// event publishing entirely; the database remains the source of truth
+    /// either way. The shared secret is read from `INTERNAL_EVENT_TOKEN`.
+    #[serde(default)]
+    pub internal_events_url: Option<String>,
+}
+
+/// Controls how long historical data is kept before the `prune` command
+/// deletes it. Exists to bound storage growth on capacity-limited databases
+/// (e.g. Neon free tier's 0.5 GB limit).
+#[derive(Debug, Deserialize, Clone)]
+pub struct RetentionConfig {
+    /// Delete `approaches` rows whose `close_approach_date` is older than
+    /// this many years.
+    #[serde(default = "default_approach_retention_years")]
+    pub approach_retention_years: u32,
+    /// Delete `etl_events` rows whose `started_at` is older than this many
+    /// days, while always keeping the most recent `etl_events_keep_min` rows.
+    #[serde(default = "default_etl_event_retention_days")]
+    pub etl_event_retention_days: u32,
+    /// Minimum number of `etl_events` rows to always keep, regardless of age,
+    /// so the dashboard's ETL history panel is never empty.
+    #[serde(default = "default_etl_events_keep_min")]
+    pub etl_events_keep_min: u32,
+}
+
+impl Default for RetentionConfig {
+    fn default() -> Self {
+        Self {
+            approach_retention_years: default_approach_retention_years(),
+            etl_event_retention_days: default_etl_event_retention_days(),
+            etl_events_keep_min: default_etl_events_keep_min(),
+        }
+    }
+}
+
+fn default_approach_retention_years() -> u32 {
+    2
+}
+
+fn default_etl_event_retention_days() -> u32 {
+    90
+}
+
+fn default_etl_events_keep_min() -> u32 {
+    50
 }
 
 /// Configuration for the HTTP server (Axum).
@@ -227,6 +290,15 @@ pub struct ServerConfig {
     /// Rate limit period in seconds.
     #[serde(default = "default_rate_limit_period")]
     pub rate_limit_period_seconds: u64,
+    /// Maximum number of concurrent `/api/events/hazards` SSE subscribers.
+    /// Each stream is a held task, so this bounds worst-case resource use.
+    #[serde(default = "default_max_hazard_subscribers")]
+    pub max_hazard_subscribers: usize,
+    /// Rate limit for `POST /internal/events`, tighter than the general API
+    /// bucket since it's a single trusted caller (the ETL job), not a public
+    /// endpoint.
+    #[serde(default = "default_internal_event_rate_limit_requests")]
+    pub internal_event_rate_limit_requests: u64,
 }
 
 fn default_request_timeout() -> u64 {
@@ -237,6 +309,12 @@ fn default_rate_limit_requests() -> u64 {
 }
 fn default_rate_limit_period() -> u64 {
     60
+}
+fn default_max_hazard_subscribers() -> usize {
+    100
+}
+fn default_internal_event_rate_limit_requests() -> u64 {
+    30
 }
 
 /// Configuration for Prometheus/OTLP metrics.
@@ -426,6 +504,7 @@ mod tests {
     fn test_debug_implementations_redact_secrets() {
         let db = DatabaseConfig {
             url: "secret_url".to_string(),
+            listen_url: None,
             max_connections: 5,
             min_connections: 1,
             connect_timeout_seconds: 10,

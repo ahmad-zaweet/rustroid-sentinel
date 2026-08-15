@@ -2,7 +2,13 @@
 //!
 //! This module handles router setup and configuration.
 
-use axum::{Router, extract::State, http::StatusCode, middleware, routing::get};
+use axum::{
+    Router,
+    extract::State,
+    http::StatusCode,
+    middleware,
+    routing::{get, post},
+};
 use axum_governor::{GovernorConfigBuilder, GovernorLayer, Quota, extractor::PeerIp};
 use axum_helmet::Helmet;
 use real::RealIpLayer;
@@ -12,6 +18,8 @@ use tower_http::{
     compression::CompressionLayer, limit::RequestBodyLimitLayer, services::ServeDir,
     timeout::TimeoutLayer, trace::TraceLayer,
 };
+
+use crate::api::handlers::internal_events::MAX_BODY_BYTES as INTERNAL_EVENTS_MAX_BODY_BYTES;
 
 use crate::api;
 use crate::settings::ServerConfig;
@@ -23,6 +31,7 @@ use super::middleware::{
 use super::state::AppState;
 
 /// Builds the main application router with all middleware and routes.
+#[allow(clippy::too_many_lines)]
 pub fn build_router(state: AppState, timeout: Duration, server_config: ServerConfig) -> Router {
     // API router with cache control
     let api_router = Router::new()
@@ -48,6 +57,7 @@ pub fn build_router(state: AppState, timeout: Duration, server_config: ServerCon
             "https://cdn.jsdelivr.net",
             "https://unpkg.com/lucide@0.577.0",
             "https://unpkg.com/htmx.org@2.0.0",
+            "https://unpkg.com/htmx-ext-sse@2.2.2",
         ])
         .style_src(vec![
             "'self'",
@@ -75,11 +85,35 @@ pub fn build_router(state: AppState, timeout: Duration, server_config: ServerCon
         .finish()
         .unwrap();
 
+    // Tighter quota for the internal ingest webhook: it has a single trusted
+    // caller (the ETL job), not public traffic.
+    let internal_events_cfg = GovernorConfigBuilder::default()
+        .with_extractor(PeerIp::default())
+        .expect_connect_info()
+        .quota_default(Quota::requests_per_minute(
+            NonZeroU32::new(server_config.internal_event_rate_limit_requests as u32)
+                .expect("internal_event_rate_limit_requests must be non-zero"),
+        ))
+        .finish()
+        .unwrap();
+
+    // Registered outside the `/api` cache-control layer and not linked from
+    // the dashboard: this is a webhook, not a public endpoint.
+    let internal_events_router = Router::new()
+        .route(
+            "/internal/events",
+            post(crate::api::handlers::ingest_events),
+        )
+        .route_layer(RequestBodyLimitLayer::new(INTERNAL_EVENTS_MAX_BODY_BYTES))
+        .route_layer(GovernorLayer::new(internal_events_cfg))
+        .with_state(state.clone());
+
     Router::new()
         .layer(RealIpLayer::default())
         .layer(GovernorLayer::new(cfg))
         .route("/", get(crate::api::handlers::render_dashboard))
         .route("/health", get(health_check_handler))
+        .merge(internal_events_router)
         .nest("/api", api_router)
         .nest("/dashboard", crate::api::routes::dashboard_router())
         .route("/metrics", get(crate::metrics::get_metrics))

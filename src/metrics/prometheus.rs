@@ -8,8 +8,15 @@ use serde::Deserialize;
 use tracing::debug;
 
 use crate::metrics::error::MetricsError;
-use crate::metrics::types::{DatabaseMetrics, MetricsSummary};
+use crate::metrics::types::{DEFAULT_STORAGE_BUDGET_BYTES, DatabaseMetrics, MetricsSummary};
 use crate::settings::GrafanaCloudPrometheusConfig;
+
+fn storage_used_percent(database_size_bytes: i64, storage_budget_bytes: i64) -> f64 {
+    if storage_budget_bytes <= 0 {
+        return 0.0;
+    }
+    (database_size_bytes as f64 / storage_budget_bytes as f64) * 100.0
+}
 
 /// Queries Grafana Cloud Prometheus for metrics summary.
 pub(crate) async fn query_grafana_prometheus(
@@ -31,6 +38,11 @@ pub(crate) async fn query_grafana_prometheus(
         total_approaches: db_metrics.total_approaches,
         hazardous_count: db_metrics.hazardous_count,
         last_etl_run: db_metrics.last_etl_run,
+        database_size_bytes: db_metrics.database_size_bytes,
+        storage_used_percent: storage_used_percent(
+            db_metrics.database_size_bytes,
+            DEFAULT_STORAGE_BUDGET_BYTES,
+        ),
         ..Default::default()
     };
 
@@ -137,5 +149,48 @@ pub(crate) fn query_local_prometheus(db_metrics: DatabaseMetrics) -> MetricsSumm
         total_approaches: db_metrics.total_approaches,
         hazardous_count: db_metrics.hazardous_count,
         last_etl_run: db_metrics.last_etl_run,
+        database_size_bytes: db_metrics.database_size_bytes,
+        storage_budget_bytes: DEFAULT_STORAGE_BUDGET_BYTES,
+        storage_used_percent: storage_used_percent(
+            db_metrics.database_size_bytes,
+            DEFAULT_STORAGE_BUDGET_BYTES,
+        ),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn storage_used_percent_computes_ratio() {
+        assert!((storage_used_percent(256 * 1024 * 1024, 512 * 1024 * 1024) - 50.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn storage_used_percent_zero_budget_is_zero() {
+        assert_eq!(storage_used_percent(100, 0), 0.0);
+    }
+
+    #[test]
+    fn storage_used_percent_zero_usage_is_zero() {
+        assert_eq!(storage_used_percent(0, 512 * 1024 * 1024), 0.0);
+    }
+
+    #[test]
+    fn query_local_prometheus_carries_storage_fields() {
+        let db_metrics = DatabaseMetrics {
+            total_asteroids: 10,
+            total_approaches: 20,
+            hazardous_count: 3,
+            last_etl_run: None,
+            database_size_bytes: 400 * 1024 * 1024,
+        };
+
+        let summary = query_local_prometheus(db_metrics);
+
+        assert_eq!(summary.database_size_bytes, 400 * 1024 * 1024);
+        assert_eq!(summary.storage_budget_bytes, DEFAULT_STORAGE_BUDGET_BYTES);
+        assert!(summary.storage_used_percent > 0.0);
     }
 }

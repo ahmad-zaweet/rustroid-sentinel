@@ -143,6 +143,8 @@ pub struct MetricsTemplate {
     pub error_rate_class: String,
     pub avg_response_time_ms: String,
     pub db_queries_per_second: String,
+    pub storage_used_percent: String,
+    pub storage_class: String,
 }
 
 impl IntoResponse for MetricsTemplate {

@@ -11,6 +11,7 @@ use rustroid_sentinel::{
     cli::alert::{self, AlertArgs},
     cli::extract::{self, ExtractArgs},
     cli::load::{self, LoadArgs},
+    cli::prune::{self, PruneArgs},
     cli::transform::{self, TransformArgs},
     settings::RustroidSentinelConfig,
 };
@@ -40,6 +41,8 @@ enum Commands {
     /// Checks for hazardous approaches and sends Discord alerts.
     #[cfg(feature = "alerting")]
     Alert(AlertArgs),
+    /// Deletes stale rows per the configured retention policy.
+    Prune(PruneArgs),
     /// Starts the high-performance web server.
     #[cfg(feature = "api")]
     Serve,
@@ -57,6 +60,7 @@ enum Commands {
 /// (like missing config), but it may panic if the `tracing_subscriber` fails to
 /// initialize or if system-level resources are unavailable.
 #[tokio::main]
+#[allow(clippy::too_many_lines)]
 async fn main() {
     // Load .env file into environment variables
     dotenvy::dotenv().ok();
@@ -109,6 +113,14 @@ async fn main() {
             }
             info!("Alert completed successfully");
         }
+        Commands::Prune(args) => {
+            info!("Running 'prune' command");
+            if let Err(e) = prune::execute(args, settings).await {
+                error!(error = %e, "Prune failed");
+                std::process::exit(1);
+            }
+            info!("Prune completed successfully");
+        }
         #[cfg(feature = "api")]
         Commands::Serve => {
             info!(
@@ -153,6 +165,7 @@ async fn main() {
             if let Err(error) = rustroid_sentinel::server::run_server(
                 &settings.service,
                 &settings.server,
+                &settings.database,
                 settings.prometheus.clone(),
                 settings.grafana_cloud_prometheus.clone(),
                 db_pool.pool().clone(),

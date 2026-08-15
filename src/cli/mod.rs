@@ -15,6 +15,7 @@
 //! | `transform`   | Run data transformation (standalone mode)      |
 //! | `load`        | Run database loading (standalone mode)         |
 //! | `alert`       | Check and send alerts for hazardous approaches |
+//! | `prune`       | Delete stale rows per the retention config     |
 //!
 //! ## Usage
 //!
@@ -42,4 +43,5 @@
 pub mod alert;
 pub mod extract;
 pub mod load;
+pub mod prune;
 pub mod transform;

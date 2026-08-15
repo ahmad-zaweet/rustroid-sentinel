@@ -2,10 +2,13 @@
 //!
 //! Handles UPSERTs of asteroids and approaches in performant batches using `sqlx`.
 
+use crate::events::HazardEvent;
+use crate::models::HazardClassification;
 use crate::models::approach::Approach;
 use crate::models::asteroid::Asteroid;
 use chrono::{DateTime, NaiveDate, Utc};
 use sqlx::PgPool;
+use std::collections::HashMap;
 use tracing::{debug, warn};
 use uuid::Uuid;
 
@@ -22,6 +25,10 @@ pub struct UpsertStats {
     pub approaches_inserted: u64,
     /// Number of duplicate approach events that were ignored.
     pub approaches_skipped: u64,
+    /// Newly-inserted approaches classified `Critical` or `High`, for
+    /// publishing to the hazard event stream. Empty for duplicate rows that
+    /// `ON CONFLICT ... DO NOTHING` skipped.
+    pub new_hazard_events: Vec<HazardEvent>,
 }
 
 impl std::fmt::Display for UpsertStats {
@@ -340,6 +347,11 @@ impl AsteroidRepository {
         let mut a_hazard_classifications: Vec<String> = Vec::new();
         let mut a_created_ats: Vec<DateTime<Utc>> = Vec::new();
 
+        // Keyed by approach id, so we can tell which of the newly-*inserted*
+        // rows (per the `RETURNING id` below) are hazardous enough to
+        // publish, without a second pass over `data`.
+        let mut approach_meta: HashMap<Uuid, (String, HazardClassification)> = HashMap::new();
+
         for (asteroid, approaches) in &data {
             ids.push(asteroid.id);
             neo_reference_ids.push(asteroid.neo_reference_id.clone());
@@ -366,6 +378,14 @@ impl AsteroidRepository {
                 a_orbiting_bodies.push(approach.orbiting_body.clone());
                 a_hazard_classifications.push(approach.hazard_classification.to_string());
                 a_created_ats.push(approach.created_at);
+
+                approach_meta.insert(
+                    approach.id,
+                    (
+                        asteroid.name.clone(),
+                        approach.hazard_classification.clone(),
+                    ),
+                );
             }
         }
 
@@ -409,7 +429,7 @@ impl AsteroidRepository {
         .execute(&mut *tx)
         .await?;
 
-        let approaches_result = sqlx::query(
+        let inserted_approach_ids: Vec<Uuid> = sqlx::query_scalar(
             r#"
             INSERT INTO approaches (
                 id, asteroid_id, close_approach_date, epoch_date_close_approach,
@@ -423,6 +443,7 @@ impl AsteroidRepository {
                 $10::text[], $11::text[], $12::timestamptz[]
             )
             ON CONFLICT (asteroid_id, epoch_date_close_approach) DO NOTHING
+            RETURNING id
             "#,
         )
         .bind(&a_ids)
@@ -437,19 +458,39 @@ impl AsteroidRepository {
         .bind(&a_orbiting_bodies)
         .bind(&a_hazard_classifications)
         .bind(&a_created_ats)
-        .execute(&mut *tx)
+        .fetch_all(&mut *tx)
         .await?;
 
         tx.commit().await?;
 
         let asteroids_inserted = asteroids_result.rows_affected();
         let asteroids_updated = ids.len() as u64 - asteroids_inserted;
+        let approaches_inserted = inserted_approach_ids.len() as u64;
+
+        let now = Utc::now();
+        let new_hazard_events = inserted_approach_ids
+            .into_iter()
+            .filter_map(|approach_id| {
+                let (asteroid_name, hazard_classification) = approach_meta.remove(&approach_id)?;
+                matches!(
+                    hazard_classification,
+                    HazardClassification::Critical | HazardClassification::High
+                )
+                .then_some(HazardEvent {
+                    approach_id,
+                    asteroid_name,
+                    hazard_classification,
+                    timestamp: now,
+                })
+            })
+            .collect();
 
         Ok(UpsertStats {
             asteroids_inserted,
             asteroids_updated,
-            approaches_inserted: approaches_result.rows_affected(),
-            approaches_skipped: a_ids.len() as u64 - approaches_result.rows_affected(),
+            approaches_inserted,
+            approaches_skipped: a_ids.len() as u64 - approaches_inserted,
+            new_hazard_events,
         })
     }
 }

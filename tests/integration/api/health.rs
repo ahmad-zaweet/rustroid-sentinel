@@ -1,14 +1,13 @@
 //! Health endpoint integration tests.
 
-use anyhow::Result;
-use axum::{body::Body, http::{Request, StatusCode}};
-use tower::ServiceExt; // for `oneshot` and `ready`
-use rustroid_sentinel::{
-    api::routes::api_router,
-    server::AppState,
-    settings::ServerConfig,
-};
 use crate::common::database::TestDatabase;
+use anyhow::Result;
+use axum::{
+    body::Body,
+    http::{Request, StatusCode},
+};
+use rustroid_sentinel::{api::routes::api_router, server::AppState, settings::ServerConfig};
+use tower::ServiceExt; // for `oneshot` and `ready`
 
 #[tokio::test]
 async fn test_health_endpoint_returns_200() -> Result<()> {
@@ -21,10 +20,14 @@ async fn test_health_endpoint_returns_200() -> Result<()> {
             request_timeout_seconds: 30,
             rate_limit_requests: 100,
             rate_limit_period_seconds: 60,
+            max_hazard_subscribers: 100,
+            internal_event_rate_limit_requests: 30,
         },
         "1.0.0".to_string(),
         None,
         None,
+        rustroid_sentinel::events::channel(),
+        "test-token".into(),
     );
 
     let app = api_router().with_state(app_state);
@@ -53,4 +56,3 @@ async fn test_health_endpoint_returns_200() -> Result<()> {
 
     Ok(())
 }
-

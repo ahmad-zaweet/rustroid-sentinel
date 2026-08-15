@@ -391,12 +391,25 @@ pub async fn refresh_metrics(State(state): State<AppState>) -> impl IntoResponse
         "text-hazard-low"
     };
 
+    // Thresholds mirror the storage-budget warning in the Neon serverless
+    // plan: 400 MB of a 512 MB budget (~78%) is the "warn" line.
+    let storage_used_percent = metrics.0.storage_used_percent;
+    let storage_class = if storage_used_percent > 90.0 {
+        "text-hazard-critical"
+    } else if storage_used_percent > 78.0 {
+        "text-hazard-high"
+    } else {
+        "text-hazard-low"
+    };
+
     MetricsTemplate {
         requests_per_second: format!("{:.3}", metrics.0.requests_per_second),
         error_rate_percent: format!("{:.3}%", error_rate),
         error_rate_class: error_rate_class.to_string(),
         avg_response_time_ms: format!("{:.3} ms", metrics.0.avg_response_time_ms),
         db_queries_per_second: format!("{:.3}", metrics.0.db_queries_per_second),
+        storage_used_percent: format!("{:.1}%", storage_used_percent),
+        storage_class: storage_class.to_string(),
     }
 }
 

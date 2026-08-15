@@ -184,6 +184,8 @@ mod tests {
             lookahead_days: 7,
             alert_cooldown_hours: 24,
             batch_size: 100,
+            retention: Default::default(),
+            internal_events_url: None,
         }
     }
 

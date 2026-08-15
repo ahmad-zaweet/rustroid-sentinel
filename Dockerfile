@@ -24,7 +24,7 @@ FROM chef AS builder
 COPY --from=planner /app/recipe.json ./recipe.json
 
 # Cook dependencies only (this layer is cached by buildx)
-RUN cargo chef cook --release --recipe-path recipe.json --features "api,alerting,metrics,etl"
+RUN cargo chef cook --release --recipe-path recipe.json --features "api,alerting,metrics,etl,pg-listen"
 
 # Copy source code and required assets for compile-time includes
 COPY src ./src
@@ -35,7 +35,7 @@ COPY config ./config
 COPY static ./static
 
 # Build the application
-RUN cargo build --release --features "api,alerting,metrics,etl"
+RUN cargo build --release --features "api,alerting,metrics,etl,pg-listen"
 
 # Strip binary for smaller size
 RUN strip target/release/rustroid-sentinel

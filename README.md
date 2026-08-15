@@ -48,7 +48,7 @@ Rustroid Sentinel is a Rust/Tokio backend that pulls near-Earth object (NEO) dat
 
 The domain logic (fetch → classify → persist → alert) is intentionally small. The bulk of the engineering effort is in the layers around it:
 
-- **Four independent binaries behind one CLI**, selected via Cargo feature flags (`api`, `alerting`, `metrics`, `etl`) compiled in or out with `#[cfg(feature = "...")]` — see [`src/lib.rs`](src/lib.rs) and [`src/main.rs`](src/main.rs).
+- **Four independent binaries behind one CLI**, selected via Cargo feature flags (`api`, `alerting`, `metrics`, `etl`, plus the optional `pg-listen`) compiled in or out with `#[cfg(feature = "...")]` — see [`src/lib.rs`](src/lib.rs) and [`src/main.rs`](src/main.rs).
 - **A streaming ETL pipeline** that never holds a full NASA response or a full batch file in memory: the extractor streams HTTP response bytes straight to a temp file ([`src/nasa/asteroid_neows/api.rs`](src/nasa/asteroid_neows/api.rs)), the loader streams NDJSON line-by-line in batches of 1,000 ([`src/cli/load.rs`](src/cli/load.rs)).
 - **Deterministic UUIDv5 identity** derived from NASA's own natural keys, which turns every load into an idempotent, restart-safe `INSERT ... ON CONFLICT` instead of a "check-then-write" race ([`src/models/asteroid.rs`](src/models/asteroid.rs), [`src/models/approach.rs`](src/models/approach.rs)).
 - **A layered security/observability middleware stack** on the Axum router — per-IP rate limiting, CSP headers, a hand-rolled CORS allowlist, request body caps, gzip compression, distributed tracing, and dual Prometheus/OTLP metrics — all composed as `tower` layers in [`src/server/router.rs`](src/server/router.rs).
@@ -77,6 +77,9 @@ Join the official [Rustroid Sentinel Discord Server](https://discord.gg/GHT55B3M
 - **Generated column for average diameter** — `estimated_diameter_avg_km` is a Postgres `GENERATED ALWAYS AS ((min+max)/2.0) STORED` column, so the average is computed once at the database and can never drift from `min`/`max` ([`migrations/003_add_diameter_avg_column.sql`](migrations/003_add_diameter_avg_column.sql)).
 - **Dual metrics pipeline with fallback chain** — a Prometheus registry is scraped at `/metrics`; the same process also pushes OTLP metrics to Grafana Cloud every 10 seconds. The dashboard's live-metrics widget queries Grafana Cloud Prometheus first, falls back to a legacy `query_url`, then falls back to database-derived counts if neither is configured ([`src/metrics/otlp.rs`](src/metrics/otlp.rs), [`src/metrics/mod.rs`](src/metrics/mod.rs)).
 - **HTMX partial SSR** — the dashboard's table, ETL history, velocity chart, and metrics widget are independently refreshable Askama templates served from dedicated `/dashboard/*` endpoints, not a single monolithic page render ([`src/api/handlers/dashboard.rs`](src/api/handlers/dashboard.rs), [`templates/partials/`](templates/partials/)).
+- **Live SSE hazard event stream** — `GET /api/events/hazards` fans out newly-loaded Critical/High approaches over Server-Sent Events with a 15s keep-alive, a typed `lagged` event (with skip count) for subscribers that fall behind instead of a silent gap, and a configurable subscriber cap (`503` past `max_hazard_subscribers`). The dashboard subscribes via `hx-ext="sse"` and re-fetches the approach table live, no polling ([`src/api/handlers/hazard_events_sse.rs`](src/api/handlers/hazard_events_sse.rs), [`src/events/`](src/events/)).
+- **Constant-time-authenticated internal ingest webhook** — `POST /internal/events` accepts the `load` command's newly-inserted hazard events (or, optionally, Postgres `NOTIFY` payloads via the `pg-listen` feature) behind a shared secret compared in constant time, a tightened per-route rate limit, and a 64 KB body cap, kept outside the public `/api` router entirely ([`src/api/handlers/internal_events.rs`](src/api/handlers/internal_events.rs)).
+- **Storage-budget-aware retention** — a `prune` CLI command deletes `approaches`/`etl_events` rows past a configurable age (while always keeping a minimum row floor for the dashboard), and the metrics widget tracks `pg_database_size` against a configurable budget (Neon free tier's 512 MB by default) with a warn/critical gauge ([`src/database/retention.rs`](src/database/retention.rs), [`src/cli/prune.rs`](src/cli/prune.rs), [`src/metrics/types.rs`](src/metrics/types.rs)).
 - **Multi-stage, layer-cached Docker build** — `cargo-chef` separates the dependency-compile layer from the source-compile layer, the runtime stage is a minimal Alpine image running as a non-root `sentinel` user with a container-level `HEALTHCHECK` hitting `/api/health` ([`Dockerfile`](Dockerfile)).
 
 ## 🏗 Architecture
@@ -93,11 +96,12 @@ flowchart TD
     Governor --> Routes{Route match}
     Routes -->|GET /| Dashboard["render_dashboard<br/>Askama SSR"]
     Routes -->|GET /health| Health["health_check_handler<br/>SELECT 1 -> 200 / 503"]
-    Routes -->|/api/*| ApiRouter["api_router<br/>+ api_cache_control: no-store"]
+    Routes -->|/api/*| ApiRouter["api_router<br/>+ api_cache_control: no-store<br/>(incl. GET /api/events/hazards SSE)"]
     Routes -->|/dashboard/*| DashRouter["dashboard_router<br/>HTMX partials"]
+    Routes -->|POST /internal/events| Internal["ingest_events<br/>X-Internal-Token (constant-time) + tighter GovernorLayer + 64KB cap"]
     Routes -->|GET /metrics| Prom["Prometheus text export"]
     Routes -->|fallback| Static["ServeDir static/<br/>+ static_cache_control: 1h"]
-    Dashboard & Health & ApiRouter & DashRouter & Prom & Static --> Body["RequestBodyLimitLayer<br/>1 MiB cap"]
+    Dashboard & Health & ApiRouter & DashRouter & Internal & Prom & Static --> Body["RequestBodyLimitLayer<br/>1 MiB cap"]
     Body --> Helmet["axum-helmet<br/>CSP + security headers"]
     Helmet --> Trace["TraceLayer"]
     Trace --> Gzip["CompressionLayer (gzip)"]
@@ -168,6 +172,8 @@ erDiagram
 
 `APPROACHES` has a `UNIQUE (asteroid_id, epoch_date_close_approach)` constraint so re-running the loader on the same source data is a no-op (`ON CONFLICT ... DO NOTHING`). `ALERTS` has `UNIQUE (approach_id, alert_type)` for the same reason. `ETL_EVENTS` tracks pipeline runs by `source_file` and is not foreign-keyed to the other tables — it's an audit log, not a domain relation. Indexes exist on `neo_reference_id`, `is_potentially_hazardous`, `asteroid_id`, `close_approach_date`, and `hazard_classification` ([`migrations/001_create_tables.sql`](migrations/001_create_tables.sql)).
 
+Hazard events (`Critical`/`High` approaches, published to the SSE stream) are not a table — the `INSERT ... ON CONFLICT ... RETURNING id` in `AsteroidRepository::upsert_batch` tells the loader exactly which approach rows were newly inserted (not deduped), and those are turned into ephemeral `HazardEvent`s fanned out over an in-process `tokio::sync::broadcast` channel ([`src/events/mod.rs`](src/events/mod.rs)); the database row remains the source of truth, the event is just a low-latency notification.
+
 ### Error Handling
 
 Each module owns a `thiserror` enum ([`src/api/error.rs`](src/api/error.rs), [`src/alert/error.rs`](src/alert/error.rs), [`src/database/error.rs`](src/database/error.rs), [`src/nasa/error.rs`](src/nasa/error.rs), [`src/metrics/error.rs`](src/metrics/error.rs)), each exposing `is_retryable()` and, for `ApiError`, a `status_code()` mapping used by its `IntoResponse` impl. Application-level code (CLI commands, `main.rs`) uses `anyhow::Result` with `.context()` instead of propagating the typed enums directly. `ApiError` maps to HTTP status as:
@@ -194,9 +200,10 @@ rustroid-sentinel/
 │   ├── api/                    # Axum handlers, routes, DTOs, Askama templates, HTTP client
 │   │   └── handlers/           # One handler module per endpoint (stats, velocity, approaches, etl_runs, health, dashboard)
 │   ├── alert/                  # Hazard-alert dispatch: Discord webhook client + idempotent alert service
-│   ├── cli/                    # extract / transform / load / alert subcommand implementations
-│   ├── database/                # Connection pool, migrations runner, write repository, read (dashboard) repository
-│   ├── metrics/                 # Prometheus registry, OTLP exporter, Axum metrics middleware, Grafana Cloud query client
+│   ├── cli/                    # extract / transform / load / prune / alert subcommand implementations
+│   ├── database/                # Connection pool, migrations runner, write repository, read (dashboard) repository, retention/pruning
+│   ├── events/                  # HazardEvent + broadcast channel; optional pg-listen NOTIFY forwarder
+│   ├── metrics/                 # Prometheus registry, OTLP exporter, Axum metrics middleware, Grafana Cloud query client, storage-budget gauge
 │   ├── models/                  # Asteroid / Approach domain structs, hazard classification enum
 │   ├── nasa/                    # Typed NeoWs API client + response DTOs
 │   ├── server/                  # Router assembly, middleware, shared AppState, graceful shutdown
@@ -225,7 +232,8 @@ Fields without a `#[serde(default)]` in the corresponding config struct are **re
 
 | Variable | Required | Description |
 | --- | --- | --- |
-| `SERVICE__DATABASE__URL` | Yes | PostgreSQL connection string |
+| `SERVICE__DATABASE__URL` | Yes | PostgreSQL connection string (pooled endpoint, e.g. Neon's `-pooler`) |
+| `SERVICE__DATABASE__LISTEN_URL` | No | Direct (non-pooler) connection string, required only by the `pg-listen` feature — PgBouncer transaction-mode pooling doesn't support `LISTEN` |
 | `SERVICE__DATABASE__MAX_CONNECTIONS` | Yes | Max pool size |
 | `SERVICE__DATABASE__MIN_CONNECTIONS` | Yes | Min idle connections |
 | `SERVICE__DATABASE__CONNECT_TIMEOUT_SECONDS` | Yes | Pool acquire timeout |
@@ -269,6 +277,10 @@ Fields without a `#[serde(default)]` in the corresponding config struct are **re
 | `SERVICE__ETL__LOOKAHEAD_DAYS` | Yes | Days in the future to include per run |
 | `SERVICE__ETL__ALERT_COOLDOWN_HOURS` | Yes | Cooldown before re-alerting the same event |
 | `SERVICE__ETL__BATCH_SIZE` | Yes | Records per DB persistence batch |
+| `SERVICE__ETL__RETENTION__APPROACH_RETENTION_YEARS` | No | Default `5` — `prune` deletes `approaches` older than this |
+| `SERVICE__ETL__RETENTION__ETL_EVENT_RETENTION_DAYS` | No | Default `30` — `prune` deletes `etl_events` older than this |
+| `SERVICE__ETL__RETENTION__ETL_EVENTS_KEEP_MIN` | No | Default `50` — minimum `etl_events` rows kept regardless of age |
+| `SERVICE__ETL__INTERNAL_EVENTS_URL` | No | `POST /internal/events` webhook URL the `load` command notifies after a run; unset skips publishing entirely (the database stays the source of truth either way) |
 
 **HTTP server** (`SERVICE__SERVER__…`)
 
@@ -277,6 +289,14 @@ Fields without a `#[serde(default)]` in the corresponding config struct are **re
 | `SERVICE__SERVER__REQUEST_TIMEOUT_SECONDS` | No | `300` | `TimeoutLayer` duration (→ 504) |
 | `SERVICE__SERVER__RATE_LIMIT_REQUESTS` | No | `100` | `GovernorLayer` quota per period |
 | `SERVICE__SERVER__RATE_LIMIT_PERIOD_SECONDS` | No | `60` | `GovernorLayer` quota window |
+| `SERVICE__SERVER__MAX_HAZARD_SUBSCRIBERS` | No | `100` | Max concurrent `GET /api/events/hazards` SSE connections (→ 503 past cap) |
+| `SERVICE__SERVER__INTERNAL_EVENT_RATE_LIMIT_REQUESTS` | No | `30` | Tighter per-minute `GovernorLayer` quota applied only to `POST /internal/events` |
+
+**Internal event ingest** (read directly, not `SERVICE__`-prefixed — never a committed config file)
+
+| Variable | Required | Description |
+| --- | --- | --- |
+| `INTERNAL_EVENT_TOKEN` | Yes (when `api` feature is on) | Shared secret compared in constant time against `X-Internal-Token` on `POST /internal/events`; the server **fails to start** if unset. The `load` command (and any other publisher) sends the same value. |
 
 **Metrics** (`SERVICE__PROMETHEUS__…`, `SERVICE__GRAFANA_CLOUD_PROMETHEUS__…`) — both sections are fully optional; omit them entirely to run with local `/metrics` scraping only.
 
@@ -366,17 +386,20 @@ cargo run --example custom_alert  # sends one Discord embed using your configure
 | --- | --- | --- |
 | `rustroid-sentinel extract [-s START] [-e END] [-o DIR] [-b BATCH_SIZE] [-f] [--dry-run]` | — | Fetches NEO data from NASA in date-range batches, writes raw JSON to `data/raw/` |
 | `rustroid-sentinel transform [-i DIR] [-o DIR] [-f] [--dry-run]` | — | Converts raw JSON into domain models with hazard classification, writes NDJSON to `data/transformed/` |
-| `rustroid-sentinel load [-i DIR] [-f] [--dry-run]` | — | Streams NDJSON into PostgreSQL via batched `UPSERT`s, tracked in `etl_events` |
+| `rustroid-sentinel load [-i DIR] [-f] [--dry-run]` | — | Streams NDJSON into PostgreSQL via batched `UPSERT`s, tracked in `etl_events`; publishes newly-inserted Critical/High approaches to `internal_events_url` if configured (best-effort, never fails the run) |
 | `rustroid-sentinel alert` | `alerting` | Finds unalerted hazardous approaches and sends Discord embeds |
+| `rustroid-sentinel prune` | — | Deletes `approaches`/`etl_events` rows past the configured retention window (`etl.retention.*`), keeping the database under its storage budget |
 | `rustroid-sentinel serve` | `api` | Runs migrations, then starts the Axum HTTP server |
 
-All five subcommands are defined in [`src/main.rs`](src/main.rs); `alert` and `serve` are behind `#[cfg(feature = "...")]` and disappear from the binary if that feature is disabled at build time.
+All six subcommands are defined in [`src/main.rs`](src/main.rs); `alert` and `serve` are behind `#[cfg(feature = "...")]` and disappear from the binary if that feature is disabled at build time.
 
 ## 🔒 Rate Limiting & Security
 
 | Mechanism | Where | Behavior |
 | --- | --- | --- |
 | Per-IP rate limit | `axum-governor` `GovernorLayer` ([`router.rs`](src/server/router.rs)) | `rate_limit_requests` per `rate_limit_period_seconds` per client IP (from `PeerIp` via `RealIpLayer`); `429` when exceeded |
+| Internal webhook auth | `POST /internal/events` ([`internal_events.rs`](src/api/handlers/internal_events.rs)) | `X-Internal-Token` compared byte-for-byte in constant time against `INTERNAL_EVENT_TOKEN`; `401` on mismatch or missing header. Route is outside the `/api` router and not linked from the dashboard. Own tighter `GovernorLayer` bucket (`internal_event_rate_limit_requests`, default 30/min) and a 64 KB body cap layered inside the global 1 MiB limit |
+| SSE subscriber cap | `GET /api/events/hazards` ([`hazard_events_sse.rs`](src/api/handlers/hazard_events_sse.rs)) | `503` once `max_hazard_subscribers` concurrent streams are held, since each is a live task |
 | CSP + security headers | `axum-helmet` ([`router.rs`](src/server/router.rs)) | Explicit `script-src`/`style-src`/`font-src`/`img-src`/`connect-src` allowlist (self + named CDNs), not a wildcard |
 | CORS | Custom `cors_middleware` ([`middleware.rs`](src/server/middleware.rs)) | Only `localhost:8000` / `127.0.0.1:8000` origins (or none) allowed; `GET` only; others get `403` |
 | Request body size | `RequestBodyLimitLayer` ([`router.rs`](src/server/router.rs)) | Hard cap at 1 MiB |
@@ -422,7 +445,7 @@ Defined in [`.gitlab-ci.yml`](.gitlab-ci.yml) and [`.gitlab/ci/`](.gitlab/ci/):
 Test dependencies actually exercised in the test suite:
 
 - **`wiremock`** — mocks the NASA NeoWs HTTP API for both unit tests ([`src/nasa/asteroid_neows/api.rs`](src/nasa/asteroid_neows/api.rs)) and the end-to-end pipeline test ([`tests/e2e/full_pipeline.rs`](tests/e2e/full_pipeline.rs)).
-- **`bollard`** — spins up a disposable `postgres:15-alpine` Docker container per integration test run for isolated database testing ([`tests/common/database.rs`](tests/common/database.rs)); chosen specifically over `testcontainers` due to a transitive RUSTSEC advisory (see the comment in [`Cargo.toml`](Cargo.toml)).
+- **`bollard`** — spins up a disposable `postgres:17-alpine` Docker container per integration test run for isolated database testing ([`tests/common/database.rs`](tests/common/database.rs)); chosen specifically over `testcontainers` due to a transitive RUSTSEC advisory (see the comment in [`Cargo.toml`](Cargo.toml)).
 - Standard `#[tokio::test]` / `#[test]` unit tests are colocated with the code they cover throughout `src/`.
 
 `mockall`, `proptest`, `insta`, and `assert-json-diff` are declared in `[dev-dependencies]` but are not currently used by any test.

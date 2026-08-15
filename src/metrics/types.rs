@@ -24,7 +24,17 @@ pub struct MetricsSummary {
     pub hazardous_count: i64,
     /// UNIX timestamp of the last successful ETL run completion.
     pub last_etl_run: Option<i64>,
+    /// Current database size in bytes (`pg_database_size`).
+    pub database_size_bytes: i64,
+    /// Configured storage budget in bytes (e.g. Neon free tier's 0.5 GB cap).
+    pub storage_budget_bytes: i64,
+    /// `database_size_bytes` as a percentage of `storage_budget_bytes`.
+    pub storage_used_percent: f64,
 }
+
+/// Storage budget assumed when a deployment doesn't override it — Neon free
+/// tier's 0.5 GB limit.
+pub const DEFAULT_STORAGE_BUDGET_BYTES: i64 = 512 * 1024 * 1024;
 
 impl Default for MetricsSummary {
     fn default() -> Self {
@@ -37,6 +47,9 @@ impl Default for MetricsSummary {
             total_approaches: 0,
             hazardous_count: 0,
             last_etl_run: None,
+            database_size_bytes: 0,
+            storage_budget_bytes: DEFAULT_STORAGE_BUDGET_BYTES,
+            storage_used_percent: 0.0,
         }
     }
 }
@@ -52,4 +65,6 @@ pub struct DatabaseMetrics {
     pub hazardous_count: i64,
     /// UNIX timestamp of the last successful ETL run.
     pub last_etl_run: Option<i64>,
+    /// Current database size in bytes (`pg_database_size`).
+    pub database_size_bytes: i64,
 }

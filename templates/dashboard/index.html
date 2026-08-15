@@ -195,8 +195,10 @@
     </div>
     <div
         id="approaches-container"
+        hx-ext="sse"
+        sse-connect="/api/events/hazards"
         hx-get="/dashboard/table"
-        hx-trigger="load"
+        hx-trigger="load, sse:hazard, sse:lagged"
         hx-swap="innerHTML"
     >
         <div class="glass-card rounded-2xl p-8">

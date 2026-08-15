@@ -1,5 +1,5 @@
 <!-- Metrics Cards — SSR Partial -->
-<div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+<div class="grid grid-cols-2 md:grid-cols-5 gap-3">
 
     <div class="metric-card group text-center p-4 rounded-xl bg-white/[0.03] backdrop-blur-sm border border-white/[0.05] hover:border-nebula-cyan/18 transition-all duration-280">
         <div class="flex items-center justify-center mb-2">
@@ -50,6 +50,19 @@
         >{{ db_queries_per_second }}</div>
         <div class="text-[10px] font-mono text-text-muted mt-1.5 uppercase tracking-wider">
             DB / sec
+        </div>
+    </div>
+
+    <div class="metric-card group text-center p-4 rounded-xl bg-white/[0.03] backdrop-blur-sm border border-white/[0.05] hover:border-hazard-high/18 transition-all duration-280">
+        <div class="flex items-center justify-center mb-2">
+            <i data-lucide="hard-drive" class="w-3.5 h-3.5 text-hazard-high opacity-55"></i>
+        </div>
+        <div
+            class="text-xl font-heading font-bold {{ storage_class }} group-hover:opacity-90 transition-opacity duration-250"
+            id="metric-storage"
+        >{{ storage_used_percent }}</div>
+        <div class="text-[10px] font-mono text-text-muted mt-1.5 uppercase tracking-wider">
+            Storage Used
         </div>
     </div>
 

@@ -7,6 +7,7 @@
 pub mod dashboard;
 pub mod error;
 pub mod repository;
+pub mod retention;
 
 use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
@@ -74,6 +75,8 @@ impl DatabasePool {
     /// This method sequentially runs:
     /// 1. `migrations/001_create_tables.sql`
     /// 2. `migrations/002_create_alerts_table.sql`
+    /// 3. `migrations/003_add_diameter_avg_column.sql`
+    /// 4. `migrations/004_add_etl_events_started_at_index.sql`
     ///
     /// # Errors
     ///
@@ -87,6 +90,13 @@ impl DatabasePool {
 
         let migration_sql_002 = include_str!("../../migrations/002_create_alerts_table.sql");
         sqlx::raw_sql(migration_sql_002).execute(&self.pool).await?;
+
+        let migration_sql_003 = include_str!("../../migrations/003_add_diameter_avg_column.sql");
+        sqlx::raw_sql(migration_sql_003).execute(&self.pool).await?;
+
+        let migration_sql_004 =
+            include_str!("../../migrations/004_add_etl_events_started_at_index.sql");
+        sqlx::raw_sql(migration_sql_004).execute(&self.pool).await?;
 
         info!("Database migrations completed successfully");
         Ok(())

@@ -76,6 +76,13 @@ pub async fn get_metrics_summary(
         total_approaches: db_metrics.total_approaches,
         hazardous_count: db_metrics.hazardous_count,
         last_etl_run: db_metrics.last_etl_run,
+        database_size_bytes: db_metrics.database_size_bytes,
+        storage_used_percent: if types::DEFAULT_STORAGE_BUDGET_BYTES > 0 {
+            (db_metrics.database_size_bytes as f64 / types::DEFAULT_STORAGE_BUDGET_BYTES as f64)
+                * 100.0
+        } else {
+            0.0
+        },
         ..Default::default()
     })
 }
@@ -114,6 +121,13 @@ async fn get_database_metrics(pool: &sqlx::PgPool) -> types::DatabaseMetrics {
     .await
     {
         metrics.last_etl_run = timestamp.map(|t| t.timestamp());
+    }
+
+    if let Ok(size) = sqlx::query_scalar::<_, i64>("SELECT pg_database_size(current_database())")
+        .fetch_one(pool)
+        .await
+    {
+        metrics.database_size_bytes = size;
     }
 
     metrics

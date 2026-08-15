@@ -26,6 +26,7 @@ use uuid::Uuid;
 
 use crate::database::DatabasePool;
 use crate::database::repository::AsteroidRepository;
+use crate::events::HazardEvent;
 use crate::models::approach::Approach;
 use crate::models::asteroid::Asteroid;
 use crate::settings::RustroidSentinelConfig;
@@ -76,16 +77,20 @@ struct LoadStats {
     total_approaches_inserted: u64,
     /// Total number of duplicate approach records that were ignored.
     total_approaches_skipped: u64,
+    /// Newly-inserted `Critical`/`High` approaches, accumulated across every
+    /// file in this run and published to `/internal/events` at the end.
+    new_hazard_events: Vec<HazardEvent>,
 }
 
 impl LoadStats {
     /// Merges statistics from a single file process into the global totals.
-    fn merge(&mut self, other: &LoadStats) {
+    fn merge(&mut self, other: LoadStats) {
         self.files_processed += other.files_processed;
         self.files_skipped += other.files_skipped;
         self.total_asteroids_upserted += other.total_asteroids_upserted;
         self.total_approaches_inserted += other.total_approaches_inserted;
         self.total_approaches_skipped += other.total_approaches_skipped;
+        self.new_hazard_events.extend(other.new_hazard_events);
     }
 }
 
@@ -167,7 +172,7 @@ pub async fn execute(args: LoadArgs, settings: RustroidSentinelConfig) -> Result
     while let Some(res) = join_set.join_next().await {
         match res {
             Ok(Ok(file_stats)) => {
-                stats.merge(&file_stats);
+                stats.merge(file_stats);
             }
             Ok(Err(e)) => {
                 error!(error = %e, "File processing failed");
@@ -179,8 +184,63 @@ pub async fn execute(args: LoadArgs, settings: RustroidSentinelConfig) -> Result
     }
 
     print_summary(&stats);
+    publish_hazard_events(&settings, &stats.new_hazard_events).await;
     info!("Load completed successfully");
     Ok(())
+}
+
+/// Best-effort publish of newly-inserted hazardous approaches to
+/// `/internal/events`, so the SSE dashboard updates without polling.
+///
+/// The database is already the source of truth by this point (rows are
+/// committed), so any failure here is logged at `warn` and never fails the
+/// ETL run.
+#[allow(clippy::cognitive_complexity)]
+async fn publish_hazard_events(settings: &RustroidSentinelConfig, events: &[HazardEvent]) {
+    if events.is_empty() {
+        return;
+    }
+
+    let Some(url) = settings.etl.internal_events_url.as_ref() else {
+        debug!(
+            count = events.len(),
+            "Skipping hazard event publish: etl.internal_events_url not configured"
+        );
+        return;
+    };
+
+    let Ok(token) = std::env::var("INTERNAL_EVENT_TOKEN") else {
+        warn!("Skipping hazard event publish: INTERNAL_EVENT_TOKEN not set");
+        return;
+    };
+
+    let client = match crate::api::client::SharedHttpClient::new(settings).await {
+        Ok(client) => client,
+        Err(e) => {
+            warn!(error = %e, "Skipping hazard event publish: failed to build HTTP client");
+            return;
+        }
+    };
+
+    let result = client
+        .http_client()
+        .post(url)
+        .header("X-Internal-Token", token)
+        .json(events)
+        .send()
+        .await;
+
+    match result {
+        Ok(response) if response.status().is_success() => {
+            info!(count = events.len(), "Published hazard events");
+        }
+        Ok(response) => {
+            warn!(status = %response.status(), "Hazard event publish rejected");
+        }
+        Err(e) => {
+            warn!(error = %e, "Failed to publish hazard events");
+        }
+    }
 }
 
 #[allow(clippy::too_many_lines)]
@@ -260,6 +320,9 @@ async fn handle_load_success(
         upsert_stats.asteroids_inserted + upsert_stats.asteroids_updated;
     stats.total_approaches_inserted += upsert_stats.approaches_inserted;
     stats.total_approaches_skipped += upsert_stats.approaches_skipped;
+    stats
+        .new_hazard_events
+        .extend(upsert_stats.new_hazard_events.iter().cloned());
     stats.files_processed += 1;
 
     // Record success

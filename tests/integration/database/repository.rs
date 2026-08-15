@@ -25,7 +25,7 @@ async fn test_get_stats_with_asteroids() -> Result<()> {
     sqlx::query(
         "INSERT INTO asteroids (id, neo_reference_id, name, absolute_magnitude,
          estimated_diameter_min_km, estimated_diameter_max_km, is_potentially_hazardous,
-         is_sentry_object, jpl_url, created_at, updated_at)
+         is_sentry_object, nasa_jpl_url, created_at, updated_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())",
     )
     .bind(uuid::Uuid::new_v4())
@@ -43,7 +43,7 @@ async fn test_get_stats_with_asteroids() -> Result<()> {
     sqlx::query(
         "INSERT INTO asteroids (id, neo_reference_id, name, absolute_magnitude,
          estimated_diameter_min_km, estimated_diameter_max_km, is_potentially_hazardous,
-         is_sentry_object, jpl_url, created_at, updated_at)
+         is_sentry_object, nasa_jpl_url, created_at, updated_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())",
     )
     .bind(uuid::Uuid::new_v4())
@@ -75,7 +75,7 @@ async fn test_get_stats_with_approaches() -> Result<()> {
     sqlx::query(
         "INSERT INTO asteroids (id, neo_reference_id, name, absolute_magnitude,
          estimated_diameter_min_km, estimated_diameter_max_km, is_potentially_hazardous,
-         is_sentry_object, jpl_url, created_at, updated_at)
+         is_sentry_object, nasa_jpl_url, created_at, updated_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())",
     )
     .bind(asteroid_id)
