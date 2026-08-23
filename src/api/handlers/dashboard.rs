@@ -493,13 +493,13 @@ mod dashboard_tests {
         // Test that health response has correct structure
         let response = HealthResponse {
             status: "healthy".to_string(),
-            version: "2.0.0".to_string(),
+            version: "2.0.1".to_string(),
             timestamp: chrono::Utc::now(),
             database_connected: true,
         };
 
         assert_eq!(response.status, "healthy");
-        assert_eq!(response.version, "2.0.0");
+        assert_eq!(response.version, "2.0.1");
         assert!(response.database_connected);
     }
 

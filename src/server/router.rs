@@ -15,8 +15,14 @@ use real::RealIpLayer;
 use std::num::NonZeroU32;
 use std::time::Duration;
 use tower_http::{
-    compression::CompressionLayer, limit::RequestBodyLimitLayer, services::ServeDir,
-    timeout::TimeoutLayer, trace::TraceLayer,
+    compression::{
+        CompressionLayer,
+        predicate::{DefaultPredicate, NotForContentType, Predicate},
+    },
+    limit::RequestBodyLimitLayer,
+    services::ServeDir,
+    timeout::TimeoutLayer,
+    trace::TraceLayer,
 };
 
 use crate::api::handlers::internal_events::MAX_BODY_BYTES as INTERNAL_EVENTS_MAX_BODY_BYTES;
@@ -141,7 +147,12 @@ pub fn build_router(state: AppState, timeout: Duration, server_config: ServerCon
                 .expect("Failed to initialize Helmet layer"),
         )
         .layer(TraceLayer::new_for_http())
-        .layer(CompressionLayer::new().gzip(true))
+        // `text/event-stream` is excluded: gzip buffers output until a block
+        // is full, which stalls the hazard SSE stream instead of flushing
+        // events as they're published (breaks badly behind Render's proxy).
+        .layer(CompressionLayer::new().gzip(true).compress_when(
+            DefaultPredicate::new().and(NotForContentType::new("text/event-stream")),
+        ))
         .layer(middleware::from_fn(metrics_middleware_wrapper))
         .layer(middleware::from_fn_with_state(
             state.clone(),

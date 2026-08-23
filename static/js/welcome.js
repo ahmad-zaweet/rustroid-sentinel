@@ -13,15 +13,25 @@
     return;
   }
 
+  // Blocks wheel/touchpad scroll directly — `overflow: hidden` on body alone
+  // doesn't stop scroll-chaining to the documentElement on some browsers.
+  function blockScroll(e) {
+    e.preventDefault();
+  }
+
   // First visit — reveal modal
   banner.style.display = "flex";
   document.body.style.overflow = "hidden";
+  window.addEventListener("wheel", blockScroll, { passive: false });
+  window.addEventListener("touchmove", blockScroll, { passive: false });
 
   function dismiss() {
     localStorage.setItem(STORAGE_KEY, "1");
     banner.style.opacity = "0";
     banner.style.transition = "opacity 0.3s ease";
     document.body.style.overflow = "";
+    window.removeEventListener("wheel", blockScroll);
+    window.removeEventListener("touchmove", blockScroll);
     setTimeout(() => {
       banner.style.display = "none";
     }, 300);
