@@ -165,7 +165,7 @@ erDiagram
     }
 
     ASTEROID_ORBITS {
-        uuid asteroid_id PK_FK
+        uuid asteroid_id PK, FK
         float8 eccentricity
         float8 semi_major_axis_au
         float8 inclination_deg
@@ -180,7 +180,7 @@ erDiagram
     }
 
     ASTEROID_EMBEDDINGS {
-        uuid asteroid_id PK_FK
+        uuid asteroid_id PK, FK
         vector_16 embedding "pgvector, HNSW-indexed"
         timestamptz computed_at
     }

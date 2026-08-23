@@ -13,4 +13,4 @@ etl_pipeline:
   resource_group: etl-pipeline
 
   rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $PIPELINE_SCHEDULE_TYPE != "weekly-report"
