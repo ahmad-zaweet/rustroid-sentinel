@@ -51,6 +51,9 @@ pub struct ApproachQueryParams<'a> {
     pub sort_by: Option<&'a str>,
     /// Optional sort direction: "asc" or "desc" (default "desc").
     pub sort_dir: Option<&'a str>,
+    /// When `true`, only include rows with non-null `torino_scale` and
+    /// `palermo_scale` — i.e. asteroids currently on JPL's Sentry Risk List.
+    pub sentry_only: bool,
 }
 
 impl DashboardRepository {
@@ -114,12 +117,15 @@ impl DashboardRepository {
             SELECT
                 a.id,
                 ast.name as asteroid_name,
+                ast.neo_reference_id,
                 a.close_approach_date,
                 a.velocity_km_per_h,
                 a.miss_distance_km,
                 a.hazard_classification,
                 ast.is_potentially_hazardous,
-                ast.estimated_diameter_avg_km
+                ast.estimated_diameter_avg_km,
+                ast.torino_scale,
+                ast.palermo_scale
             FROM approaches a
             JOIN asteroids ast ON a.asteroid_id = ast.id
             ORDER BY a.close_approach_date DESC, a.created_at DESC
@@ -281,12 +287,15 @@ impl DashboardRepository {
             SELECT
                 a.id,
                 ast.name as asteroid_name,
+                ast.neo_reference_id,
                 a.close_approach_date,
                 a.velocity_km_per_h,
                 a.miss_distance_km,
                 a.hazard_classification,
                 ast.is_potentially_hazardous,
-                ast.estimated_diameter_avg_km
+                ast.estimated_diameter_avg_km,
+                ast.torino_scale,
+                ast.palermo_scale
             FROM approaches a
             JOIN asteroids ast ON a.asteroid_id = ast.id
             WHERE 1=1
@@ -315,6 +324,11 @@ impl DashboardRepository {
             count_query.push_bind(hazard);
             data_query.push(" AND a.hazard_classification = ");
             data_query.push_bind(hazard);
+        }
+
+        if params.sentry_only {
+            count_query.push(" AND ast.torino_scale IS NOT NULL AND ast.palermo_scale IS NOT NULL");
+            data_query.push(" AND ast.torino_scale IS NOT NULL AND ast.palermo_scale IS NOT NULL");
         }
 
         let total: (i64,) = count_query.build_query_as().fetch_one(pool).await?;

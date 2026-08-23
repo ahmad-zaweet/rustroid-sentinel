@@ -56,8 +56,9 @@ pub fn build_router(state: AppState, timeout: Duration, server_config: ServerCon
             "https://cdn.tailwindcss.com",
             "https://cdn.jsdelivr.net",
             "https://unpkg.com/lucide@0.577.0",
-            "https://unpkg.com/htmx.org@2.0.0",
+            "https://unpkg.com/htmx.org@2.0.10",
             "https://unpkg.com/htmx-ext-sse@2.2.2",
+            "https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js.map",
         ])
         .style_src(vec![
             "'self'",

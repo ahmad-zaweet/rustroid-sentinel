@@ -4,8 +4,11 @@
 //! database. It includes a managed connection pool ([`DatabasePool`]),
 //! safe migration execution, and repository traits for domain entity persistence.
 
+pub mod catalog;
 pub mod dashboard;
+pub mod embeddings;
 pub mod error;
+pub mod report;
 pub mod repository;
 pub mod retention;
 
@@ -97,6 +100,18 @@ impl DatabasePool {
         let migration_sql_004 =
             include_str!("../../migrations/004_add_etl_events_started_at_index.sql");
         sqlx::raw_sql(migration_sql_004).execute(&self.pool).await?;
+
+        let migration_sql_005 = include_str!("../../migrations/005_add_sentry_hazard_scales.sql");
+        sqlx::raw_sql(migration_sql_005).execute(&self.pool).await?;
+
+        let migration_sql_006 = include_str!("../../migrations/006_add_asteroid_orbits.sql");
+        sqlx::raw_sql(migration_sql_006).execute(&self.pool).await?;
+
+        let migration_sql_007 = include_str!("../../migrations/007_pg_trgm_name_index.sql");
+        sqlx::raw_sql(migration_sql_007).execute(&self.pool).await?;
+
+        let migration_sql_008 = include_str!("../../migrations/008_add_asteroid_embeddings.sql");
+        sqlx::raw_sql(migration_sql_008).execute(&self.pool).await?;
 
         info!("Database migrations completed successfully");
         Ok(())

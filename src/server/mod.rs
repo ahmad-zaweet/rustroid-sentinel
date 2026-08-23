@@ -63,6 +63,7 @@ pub async fn run_server(
         .into();
 
     let events_tx = crate::events::channel();
+    let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
 
     #[cfg(feature = "pg-listen")]
     {
@@ -90,6 +91,7 @@ pub async fn run_server(
         grafana_cloud_prometheus_config,
         events_tx,
         internal_event_token,
+        shutdown_rx,
     );
 
     info!(
@@ -109,7 +111,13 @@ pub async fn run_server(
         listener,
         app.into_make_service_with_connect_info::<SocketAddr>(),
     )
-    .with_graceful_shutdown(shutdown_signal())
+    .with_graceful_shutdown(async move {
+        shutdown_signal().await;
+        // Unblocks any open SSE streams (see `AppState::shutdown`) so they
+        // close promptly instead of leaving graceful shutdown waiting on
+        // connections that never end on their own.
+        let _ = shutdown_tx.send(true);
+    })
     .await?;
 
     info!("Server shutdown complete");

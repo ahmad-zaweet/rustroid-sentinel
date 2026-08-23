@@ -6,7 +6,7 @@ readme = "README.md"
 keywords = ["nasa", "asteroid", "etl", "observability", "api"]
 categories = ["science", "web-programming::http-server", "database-implementations"]
 repository = "https://gitlab.com/AhmadZaweet/rustroid-sentinel"
-version = "1.0.0"
+version = "2.0.0"
 edition = "2024"
 
 [lints.clippy]
@@ -56,6 +56,7 @@ sqlx = { version = "0.9.*", default-features = false, features = [
     "chrono",
     "macros",
 ] }
+pgvector = { version = "0.4", features = ["sqlx"] }
 
 # HTTP client with middleware
 reqwest = { version = "0.13.*", default-features = false, features = [
@@ -86,7 +87,7 @@ bytes = "1"
 chrono = { version = "0.4.*", features = ["serde"] }
 
 # UUIDs
-uuid = { version = "1.24.*", features = ["v4", "v5", "serde"] }
+uuid = { version = "1.25.*", features = ["v4", "v5", "serde"] }
 
 # Logging and tracing
 tracing = "0.1.*"
@@ -154,6 +155,9 @@ pg-listen = []
 # Async testing - Latest stable as of 2026
 tokio = { version = "1.53.*", features = ["full", "test-util"] }
 tokio-test = "0.4.5"
+
+# Mirrors axum's Query extractor, for testing query-string DTO deserialization
+serde_urlencoded = "0.7"
 
 # HTTP mocking - Latest stable versions
 wiremock = "0.6.5"

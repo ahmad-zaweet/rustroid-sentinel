@@ -1,81 +1,142 @@
 /**
- * Rustroid Sentinel Dashboard
- * Sentinel Prime 2026 — Deep Navy · Teal · Violet
+ * Rustroid Sentinel — Dashboard & Atmospheric Space Canvas
+ * Claude Design v2 Architecture
  */
 
 let velocityChart = null;
-let currentVelocityPeriod = "7d";
 
-// Sentinel Prime color palette
-const colors = {
-  nebulaPurple: "#7C3AED",
-  nebulaBlue: "#38BDF8",
-  nebulaCyan: "#2DD4BF",
-  nebulaPink: "#F59E0B",
-  starWhite: "#ffffff",
-  textPrimary: "#F1F5F9",
-  textSecondary: "#CBD5E1",
-  textTertiary: "#94A3B8",
+// Palette Tokens
+const PALETTE = {
+  violet: "#7C3AED",
+  blue: "#38BDF8",
+  teal: "#2DD4BF",
+  tealBright: "#4FE8DC",
+  lilac: "#C4B5FD",
   hazardCritical: "#EF4444",
   hazardHigh: "#F97316",
   hazardMedium: "#EAB308",
   hazardLow: "#22C55E",
-  gridLine: "rgba(255, 255, 255, 0.08)",
 };
 
 /**
- * Generate animated star field background
+ * Atmospheric 2D Starfield Canvas with Mouse Parallax & Twinkle
  */
-function generateStars() {
-  const starsContainer = document.getElementById("stars");
-  if (!starsContainer) return;
-  const starCount = 120;
+function initStarsCanvas() {
+  const cv = document.getElementById("stars-canvas");
+  if (!cv) return;
+  const ctx = cv.getContext("2d");
+  if (!ctx) return;
 
-  for (let i = 0; i < starCount; i++) {
-    const star = document.createElement("div");
-    star.className = "star";
-    star.style.left = `${Math.random() * 100}%`;
-    star.style.top = `${Math.random() * 100}%`;
-    const size = Math.random() * 1.8 + 0.8;
-    star.style.width = `${size}px`;
-    star.style.height = `${size}px`;
-    star.style.setProperty("--twinkle-duration", `${Math.random() * 4 + 3}s`);
-    star.style.setProperty("--twinkle-opacity", `${Math.random() * 0.45 + 0.3}`);
-    star.style.animationDelay = `${Math.random() * 3}s`;
-    starsContainer.appendChild(star);
+  let stars = [];
+  let raf;
+  let w = 0, h = 0;
+  let mx = 0, my = 0;
+  let tx = 0, ty = 0;
+
+  const resize = () => {
+    const dpr = window.devicePixelRatio || 1;
+    w = window.innerWidth;
+    h = window.innerHeight;
+    cv.width = w * dpr;
+    cv.height = h * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    const count = Math.round((w * h) / 7200);
+    stars = Array.from({ length: count }, () => ({
+      x: Math.random() * w,
+      y: Math.random() * h,
+      r: Math.random() * 1.2 + 0.25,
+      z: 0.3 + Math.random() * 1,
+      p: Math.random() * 6.2832,
+      s: 0.4 + Math.random() * 1.1,
+      c: Math.random() > 0.84 ? "165,243,235" : (Math.random() > 0.66 ? "196,181,253" : "236,233,248"),
+    }));
+  };
+
+  const FRAME_INTERVAL = 1000 / 30;
+  let lastFrame = 0;
+
+  const draw = (t) => {
+    if (t - lastFrame < FRAME_INTERVAL) {
+      raf = requestAnimationFrame(draw);
+      return;
+    }
+    lastFrame = t;
+
+    tx += (mx - tx) * 0.045;
+    ty += (my - ty) * 0.045;
+    ctx.clearRect(0, 0, w, h);
+
+    for (let i = 0; i < stars.length; i++) {
+      const s = stars[i];
+      const a = 0.14 + 0.5 * (0.5 + 0.5 * Math.sin((t / 1300) * s.s + s.p));
+      ctx.fillStyle = `rgba(${s.c},${a})`;
+      ctx.beginPath();
+      ctx.arc(s.x + tx * s.z, s.y + ty * s.z, s.r, 0, 6.2832);
+      ctx.fill();
+    }
+    if (!document.hidden) raf = requestAnimationFrame(draw);
+  };
+
+  window.addEventListener("resize", resize);
+  window.addEventListener("mousemove", (e) => {
+    mx = (e.clientX / window.innerWidth - 0.5) * -26;
+    my = (e.clientY / window.innerHeight - 0.5) * -18;
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      cancelAnimationFrame(raf);
+    } else if (!reducedMotionActive) {
+      raf = requestAnimationFrame(draw);
+    }
+  });
+
+  resize();
+
+  const reducedMotionActive =
+    window.RustroidUI?.prefersReducedMotion?.() ??
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  if (reducedMotionActive) {
+    draw(0);
+  } else {
+    raf = requestAnimationFrame(draw);
   }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  generateStars();
-  initializeChart();
+/**
+ * Spotlight Cursor Tracking for Active Hazard Card
+ */
+function initHazardSpotlight() {
+  const box = document.getElementById("active-hazard-box");
+  const spot = document.getElementById("hazard-spotlight");
+  if (!box || !spot) return;
 
-  if (window.lucide) {
-    lucide.createIcons();
-  }
+  box.addEventListener("mousemove", (e) => {
+    const r = box.getBoundingClientRect();
+    const x = e.clientX - r.left;
+    const y = e.clientY - r.top;
+    spot.style.transform = `translate(${x}px, ${y}px)`;
+    spot.style.opacity = "1";
+  });
 
-  if (window.VELOCITY_DATA && window.VELOCITY_DATA.length > 0) {
-    updateChart(window.VELOCITY_DATA);
-  }
-
-  checkHealth();
-  setInterval(checkHealth, 30000);
-
-  updateLastUpdated();
-});
+  box.addEventListener("mouseleave", () => {
+    spot.style.opacity = "0";
+  });
+}
 
 /**
- * Initialize Chart.js velocity chart with Sentinel Prime palette
+ * Initialize Chart.js Velocity Trajectory Chart
  */
-function initializeChart() {
+function initVelocityChart() {
   const canvas = document.getElementById("velocityChart");
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
 
-  // Teal-to-violet gradient fill
-  const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-  gradient.addColorStop(0, "rgba(45, 212, 191, 0.5)");
-  gradient.addColorStop(0.45, "rgba(56, 189, 248, 0.25)");
+  const gradient = ctx.createLinearGradient(0, 0, 0, 320);
+  gradient.addColorStop(0, "rgba(79, 232, 220, 0.35)");
+  gradient.addColorStop(0.55, "rgba(124, 58, 237, 0.12)");
   gradient.addColorStop(1, "rgba(124, 58, 237, 0.0)");
 
   velocityChart = new Chart(ctx, {
@@ -86,19 +147,18 @@ function initializeChart() {
         {
           label: "Velocity (km/h)",
           data: [],
-          borderColor: colors.nebulaCyan,
+          borderColor: PALETTE.tealBright,
           backgroundColor: gradient,
-          borderWidth: 2.5,
+          borderWidth: 2.25,
           fill: true,
-          tension: 0.4,
-          pointRadius: 4,
-          pointHoverRadius: 8,
-          pointBackgroundColor: colors.nebulaCyan,
-          pointBorderColor: "rgba(4, 13, 24, 0.8)",
+          tension: 0.38,
+          pointRadius: 3.5,
+          pointHoverRadius: 7,
+          pointBackgroundColor: PALETTE.lilac,
+          pointBorderColor: "#050410",
           pointBorderWidth: 2,
-          pointHoverBackgroundColor: colors.starWhite,
-          pointHoverBorderColor: colors.nebulaCyan,
-          pointHoverBorderWidth: 2.5,
+          pointHoverBackgroundColor: "#FFFFFF",
+          pointHoverBorderColor: PALETTE.tealBright,
         },
       ],
     },
@@ -112,60 +172,35 @@ function initializeChart() {
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: "rgba(4, 13, 24, 0.97)",
-          backdropFilter: "blur(24px)",
-          titleColor: colors.textPrimary,
-          bodyColor: colors.textSecondary,
-          borderColor: "rgba(45, 212, 191, 0.25)",
+          backgroundColor: "rgba(14, 10, 30, 0.96)",
+          titleColor: "#F4F1FC",
+          bodyColor: "#C3BEDA",
+          borderColor: "rgba(196, 181, 253, 0.2)",
           borderWidth: 1,
-          padding: 14,
+          padding: 12,
+          cornerRadius: 10,
+          titleFont: { size: 12, family: "'Exo 2', sans-serif", weight: 600 },
+          bodyFont: { size: 11, family: "'JetBrains Mono', monospace" },
           displayColors: false,
-          cornerRadius: 12,
-          titleFont: {
-            size: 13,
-            weight: 700,
-            family: "'Exo 2', sans-serif",
-          },
-          bodyFont: {
-            size: 12,
-            family: "'Nunito Sans', sans-serif",
-          },
           callbacks: {
-            title: (items) => velocityChart.data.labels[items[0].dataIndex],
-            label: (item) => `Velocity: ${item.parsed.y.toLocaleString()} km/h`,
+            label: (item) => `Velocity: ${Math.round(item.parsed.y).toLocaleString()} km/h`,
           },
         },
       },
       scales: {
         x: {
-          grid: {
-            color: colors.gridLine,
-            drawBorder: false,
-            lineWidth: 1,
-          },
+          grid: { color: "rgba(196, 181, 253, 0.05)", drawBorder: false },
           ticks: {
-            color: colors.textTertiary,
-            maxRotation: 45,
-            minRotation: 45,
-            font: { size: 11, family: "'JetBrains Mono', monospace" },
-            padding: 10,
+            color: "#7B7499",
+            font: { size: 9.5, family: "'JetBrains Mono', monospace" },
           },
         },
         y: {
-          grid: {
-            color: colors.gridLine,
-            drawBorder: false,
-            lineWidth: 1,
-          },
+          grid: { color: "rgba(196, 181, 253, 0.06)", drawBorder: false },
           ticks: {
-            color: colors.textTertiary,
-            font: { size: 11, family: "'JetBrains Mono', monospace" },
-            padding: 10,
-            callback: (value) => {
-              if (value >= 1000000) return (value / 1000000).toFixed(1) + "M";
-              if (value >= 1000) return (value / 1000).toFixed(0) + "K";
-              return value.toLocaleString();
-            },
+            color: "#7B7499",
+            font: { size: 9.5, family: "'JetBrains Mono', monospace" },
+            callback: (v) => (v >= 1000 ? `${Math.round(v / 1000)}K` : v),
           },
           beginAtZero: false,
         },
@@ -175,188 +210,88 @@ function initializeChart() {
 }
 
 /**
- * Update chart with grouped velocity data
+ * Update Chart with Grouped Velocity Data
  */
 function updateChart(velocityData) {
   if (!velocityChart) return;
-
   if (!velocityData || velocityData.length === 0) {
-    velocityChart.data.labels = ["No Data Available"];
+    velocityChart.data.labels = ["No Data"];
     velocityChart.data.datasets[0].data = [0];
-    velocityChart.options.scales.y.beginAtZero = true;
     velocityChart.update("none");
     return;
   }
 
-  const groupedData = velocityData.reduce((acc, d) => {
+  const grouped = velocityData.reduce((acc, d) => {
     const date = new Date(d.date);
-    const dateKey = date.toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-
-    if (!acc[dateKey]) {
-      acc[dateKey] = { total: 0, count: 0, date: date };
-    }
-    acc[dateKey].total += d.velocity_km_per_h;
-    acc[dateKey].count += 1;
+    const key = date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    if (!acc[key]) acc[key] = { total: 0, count: 0, date };
+    acc[key].total += d.velocity_km_per_h;
+    acc[key].count += 1;
     return acc;
   }, {});
 
-  const sortedData = Object.entries(groupedData)
-    .map(([dateKey, data]) => ({
-      label: dateKey,
-      velocity: data.total / data.count,
-      date: data.date,
-    }))
+  const sorted = Object.entries(grouped)
+    .map(([label, data]) => ({ label, velocity: data.total / data.count, date: data.date }))
     .sort((a, b) => a.date - b.date);
 
-  velocityChart.data.labels = sortedData.map((d) => d.label);
-  velocityChart.data.datasets[0].data = sortedData.map((d) => d.velocity);
-  velocityChart.options.scales.y.beginAtZero = false;
+  velocityChart.data.labels = sorted.map((d) => d.label.toUpperCase());
+  velocityChart.data.datasets[0].data = sorted.map((d) => d.velocity);
   velocityChart.update("none");
 }
 
 /**
- * Health check via API
+ * Live UTC Clock
  */
-async function checkHealth() {
-  try {
-    const response = await fetch("/api/health");
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const result = await response.json();
-    const healthy =
-      result.success &&
-      result.data &&
-      result.data.status === "healthy" &&
-      result.data.database_connected;
-    updateConnectionStatus(healthy);
-  } catch (error) {
-    console.error("Health check failed:", error);
-    updateConnectionStatus(false);
-  }
-}
-
-/**
- * Update connection status badge
- */
-function updateConnectionStatus(connected) {
-  const statusDot = document.getElementById("connection-status");
-  const statusText = document.getElementById("status-text");
-
-  if (connected) {
-    statusDot.className = "w-1.5 h-1.5 rounded-full status-dot status-dot-live";
-    if (statusText) {
-      statusText.textContent = "CONNECTED";
-      statusText.className = "";
-    }
-  } else {
-    statusDot.className = "w-1.5 h-1.5 rounded-full bg-hazard-critical";
-    if (statusText) {
-      statusText.textContent = "OFFLINE";
-      statusText.className = "text-hazard-critical";
-    }
-  }
-}
-
-/**
- * Update last updated timestamp
- */
-function updateLastUpdated() {
-  const el = document.getElementById("last-updated");
+function updateUtcClock() {
+  const el = document.getElementById("utc-clock");
   if (!el) return;
   const now = new Date();
-  el.textContent = now.toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-}
-
-function formatDate(dateString) {
-  const date = new Date(dateString);
-  return date.toLocaleDateString("en-US", {
+  const dateStr = now.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
     year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
-
-function formatDateTime(dateString) {
-  const date = new Date(dateString);
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
+  }).toUpperCase();
+  const timeStr = now.toLocaleTimeString("en-GB", {
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "UTC",
   });
+  el.textContent = `${dateStr} · ${timeStr} UTC`;
 }
 
-function escapeHtml(text) {
-  const div = document.createElement("div");
-  div.textContent = text;
-  return div.innerHTML;
-}
-
-document.addEventListener("htmx:afterSwap", function (event) {
-  if (window.lucide && window.lucide.createIcons) {
-    window.lucide.createIcons();
-  }
-
+// HTMX Swap Listener for velocity chart updates
+document.addEventListener("htmx:afterSwap", (event) => {
   if (event.detail.target.id === "velocity-chart-container") {
     const chartDataEl = document.getElementById("velocity-chart-data");
     if (chartDataEl) {
-      const labelsAttr = chartDataEl.getAttribute("data-labels");
-      const valuesAttr = chartDataEl.getAttribute("data-values");
-
-      if (labelsAttr && valuesAttr) {
-        try {
-          const labels = JSON.parse(labelsAttr);
-          const values = JSON.parse(valuesAttr);
-          const velocityData = labels.map((label, index) => ({
-            date: new Date(`2024-${label}`),
-            velocity_km_per_h: values[index],
-          }));
-          updateChart(velocityData);
-          updateLastUpdated();
-        } catch (e) {
-          console.error("Failed to parse velocity data:", e);
-        }
+      try {
+        const labels = JSON.parse(chartDataEl.getAttribute("data-labels") || "[]");
+        const values = JSON.parse(chartDataEl.getAttribute("data-values") || "[]");
+        const velocityData = labels.map((label, idx) => ({
+          date: new Date(`2026-${label}`),
+          velocity_km_per_h: values[idx],
+        }));
+        updateChart(velocityData);
+      } catch (err) {
+        console.error("Failed to parse velocity data:", err);
       }
     }
   }
+
+  // Re-bind spotlight if active hazard box swapped
+  initHazardSpotlight();
 });
 
-document.addEventListener("DOMContentLoaded", function () {
-  if (window.lucide && window.lucide.createIcons) {
-    window.lucide.createIcons();
-  }
-});
-
+// Initialization
 document.addEventListener("DOMContentLoaded", () => {
-  const form = document.getElementById("filter-form");
-  const startInput = document.getElementById("start-date");
-  const endInput = document.getElementById("end-date");
+  initStarsCanvas();
+  initHazardSpotlight();
+  initVelocityChart();
 
-  if (form && startInput && endInput) {
-    startInput.addEventListener("change", () => {
-      if (startInput.value) endInput.min = startInput.value;
-    });
-
-    endInput.addEventListener("change", () => {
-      if (endInput.value) startInput.max = endInput.value;
-    });
-
-    form.addEventListener("htmx:beforeRequest", (e) => {
-      if (
-        startInput.value &&
-        endInput.value &&
-        endInput.value < startInput.value
-      ) {
-        alert("End date cannot be before start date.");
-        e.preventDefault();
-      }
-    });
+  if (window.VELOCITY_DATA && window.VELOCITY_DATA.length > 0) {
+    updateChart(window.VELOCITY_DATA);
   }
+
+  updateUtcClock();
+  setInterval(updateUtcClock, 10000);
 });

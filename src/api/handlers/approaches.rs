@@ -24,6 +24,9 @@ pub struct ApproachesQuery {
     pub end_date: Option<NaiveDate>,
     /// Optional hazard classification filter.
     pub hazard_class: Option<String>,
+    /// When `true`, only return asteroids currently on JPL's Sentry Risk List
+    /// (non-null `torino_scale`/`palermo_scale`).
+    pub sentry_only: Option<bool>,
 }
 
 fn default_page() -> u32 {
@@ -56,6 +59,7 @@ pub async fn approaches(
             hazard_class: params.hazard_class.as_deref(),
             sort_by: None,
             sort_dir: None,
+            sentry_only: params.sentry_only.unwrap_or(false),
         },
     )
     .await

@@ -11,8 +11,13 @@ use rustroid_sentinel::{
     cli::alert::{self, AlertArgs},
     cli::extract::{self, ExtractArgs},
     cli::load::{self, LoadArgs},
+    cli::orbits::{self, OrbitsArgs},
+    cli::pipeline::{self, PipelineArgs},
     cli::prune::{self, PruneArgs},
+    cli::report::{self, ReportArgs},
+    cli::sentry::{self, SentryArgs},
     cli::transform::{self, TransformArgs},
+    cli::vectorize::{self, VectorizeArgs},
     settings::RustroidSentinelConfig,
 };
 use tracing::{Level, error, info};
@@ -43,6 +48,20 @@ enum Commands {
     Alert(AlertArgs),
     /// Deletes stale rows per the configured retention policy.
     Prune(PruneArgs),
+    /// Checks Sentry-flagged asteroids against JPL's Sentry API and stores
+    /// real Torino/Palermo hazard scale values.
+    Sentry(SentryArgs),
+    /// Fetches orbital elements for asteroids from JPL's Small-Body Database API.
+    Orbits(OrbitsArgs),
+    /// Computes and stores pgvector similarity embeddings for every asteroid.
+    Vectorize(VectorizeArgs),
+    /// Aggregates the trailing week's approaches and sends a Discord report.
+    #[cfg(feature = "alerting")]
+    Report(ReportArgs),
+    /// Runs extract, transform, load, prune, vectorize, and (Sundays) report
+    /// in one process, so a compute-metered database wakes once per run.
+    #[cfg(feature = "alerting")]
+    Pipeline(PipelineArgs),
     /// Starts the high-performance web server.
     #[cfg(feature = "api")]
     Serve,
@@ -120,6 +139,48 @@ async fn main() {
                 std::process::exit(1);
             }
             info!("Prune completed successfully");
+        }
+        Commands::Sentry(args) => {
+            info!("Running 'sentry' command");
+            if let Err(e) = sentry::execute(args, settings).await {
+                error!(error = %e, "Sentry check failed");
+                std::process::exit(1);
+            }
+            info!("Sentry check completed successfully");
+        }
+        Commands::Orbits(args) => {
+            info!("Running 'orbits' command");
+            if let Err(e) = orbits::execute(args, settings).await {
+                error!(error = %e, "Orbit check failed");
+                std::process::exit(1);
+            }
+            info!("Orbit check completed successfully");
+        }
+        Commands::Vectorize(args) => {
+            info!("Running 'vectorize' command");
+            if let Err(e) = vectorize::execute(args, settings).await {
+                error!(error = %e, "Vectorize failed");
+                std::process::exit(1);
+            }
+            info!("Vectorize completed successfully");
+        }
+        #[cfg(feature = "alerting")]
+        Commands::Report(args) => {
+            info!("Running 'report' command");
+            if let Err(e) = report::execute(args, settings).await {
+                error!(error = %e, "Report failed");
+                std::process::exit(1);
+            }
+            info!("Report completed successfully");
+        }
+        #[cfg(feature = "alerting")]
+        Commands::Pipeline(args) => {
+            info!("Running 'pipeline' command");
+            if let Err(e) = pipeline::execute(args, settings).await {
+                error!(error = %e, "Pipeline failed");
+                std::process::exit(1);
+            }
+            info!("Pipeline completed successfully");
         }
         #[cfg(feature = "api")]
         Commands::Serve => {

@@ -16,6 +16,8 @@
 //! | `load`        | Run database loading (standalone mode)         |
 //! | `alert`       | Check and send alerts for hazardous approaches |
 //! | `prune`       | Delete stale rows per the retention config     |
+//! | `sentry`      | Check Sentry-flagged asteroids against JPL API |
+//! | `orbits`      | Fetch orbital elements from JPL's SBDB API     |
 //!
 //! ## Usage
 //!
@@ -43,5 +45,10 @@
 pub mod alert;
 pub mod extract;
 pub mod load;
+pub mod orbits;
+pub mod pipeline;
 pub mod prune;
+pub mod report;
+pub mod sentry;
 pub mod transform;
+pub mod vectorize;

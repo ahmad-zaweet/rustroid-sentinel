@@ -80,7 +80,9 @@ impl AlertService {
                 ap.miss_distance_km,
                 ap.velocity_km_per_h,
                 ap.hazard_classification,
-                ast.estimated_diameter_avg_km
+                ast.estimated_diameter_avg_km,
+                ast.torino_scale,
+                ast.palermo_scale
             FROM approaches ap
             JOIN asteroids ast ON ap.asteroid_id = ast.id
             LEFT JOIN alerts al ON ap.id = al.approach_id AND al.alert_type = 'discord'
@@ -114,6 +116,8 @@ impl AlertService {
             let vel_kmh: f64 = row.try_get("velocity_km_per_h")?;
             let hazard: String = row.try_get("hazard_classification")?;
             let diameter_avg_km: f64 = row.try_get("estimated_diameter_avg_km")?;
+            let torino_scale: Option<i16> = row.try_get("torino_scale")?;
+            let palermo_scale: Option<f64> = row.try_get("palermo_scale")?;
 
             let service = self.clone();
 
@@ -128,6 +132,8 @@ impl AlertService {
                         miss_distance_km: miss_km,
                         velocity_km_h: vel_kmh,
                         diameter_avg_km,
+                        torino_scale,
+                        palermo_scale,
                     })
                     .await
                 {

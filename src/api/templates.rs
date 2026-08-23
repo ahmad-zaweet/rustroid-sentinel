@@ -4,7 +4,9 @@
 //!
 //! This module contains Askama templates for server-side rendered (SSR) HTML pages.
 
-use crate::api::types::{ApproachRecord, EtlRunRecord, VelocityDataPoint};
+use crate::api::types::{
+    ApproachRecord, AsteroidCatalogRecord, AsteroidDetailRecord, EtlRunRecord, VelocityDataPoint,
+};
 use askama::Template;
 use axum::{
     http::StatusCode,
@@ -74,6 +76,7 @@ pub struct ApproachesTableTemplate {
     pub is_last_page: bool,
     pub sort_by: String,
     pub sort_dir: String,
+    pub sentry_only: bool,
 }
 
 impl IntoResponse for ApproachesTableTemplate {
@@ -148,6 +151,138 @@ pub struct MetricsTemplate {
 }
 
 impl IntoResponse for MetricsTemplate {
+    fn into_response(self) -> Response {
+        match self.render() {
+            Ok(html) => Html(html).into_response(),
+            Err(err) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to render template: {}", err),
+            )
+                .into_response(),
+        }
+    }
+}
+
+/// Askama template for the weekly report partial (HTMX). Mirrors the
+/// trailing-7-day summary sent to Discord by `rustroid-sentinel report`.
+#[derive(Template)]
+#[template(path = "partials/weekly-report.html")]
+pub struct WeeklyReportTemplate {
+    pub start_date: String,
+    pub end_date: String,
+    pub total_approaches: String,
+    pub critical_count: String,
+    pub high_count: String,
+    pub medium_count: String,
+    pub low_count: String,
+    pub closest_approach: Option<String>,
+    pub fastest_approach: Option<String>,
+    pub largest_asteroid: Option<String>,
+}
+
+impl IntoResponse for WeeklyReportTemplate {
+    fn into_response(self) -> Response {
+        match self.render() {
+            Ok(html) => Html(html).into_response(),
+            Err(err) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to render template: {}", err),
+            )
+                .into_response(),
+        }
+    }
+}
+
+/// Askama template for the asteroid catalog page.
+#[derive(Template)]
+#[template(path = "dashboard/catalog.html")]
+pub struct CatalogTemplate {
+    /// Pre-rendered [`CatalogRowsTemplate`] HTML for the first page,
+    /// injected with `| safe` — keeps a single source of truth for row
+    /// markup between the full-page load and the HTMX rows endpoint.
+    pub rows_html: String,
+    /// Opaque cursor for the page after the first, or `None` if the first
+    /// page is also the last — seeds the Next button's initial state.
+    pub next_cursor: Option<String>,
+    /// Active sort key, serialized form (e.g. `"name"`) — used to render
+    /// the initial active-sort header styling.
+    pub sort: String,
+    /// Active sort direction, `"asc"` or `"desc"`.
+    pub sort_dir: String,
+    /// Current filter values as a URL query fragment (leading `&`, or
+    /// empty), so sort-header links preserve the active filters.
+    pub query_string: String,
+}
+
+impl IntoResponse for CatalogTemplate {
+    fn into_response(self) -> Response {
+        match self.render() {
+            Ok(html) => Html(html).into_response(),
+            Err(err) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to render template: {}", err),
+            )
+                .into_response(),
+        }
+    }
+}
+
+/// Askama template for one page of catalog rows, rendered behind explicit
+/// Prev/Next buttons (see `templates/dashboard/catalog.html`'s inline
+/// script) rather than infinite scroll.
+///
+/// Serves two roles: rendered directly as the `GET /dashboard/catalog/rows`
+/// response, and pre-rendered once into [`CatalogTemplate::rows_html`] for
+/// the initial page load.
+#[derive(Template)]
+#[template(path = "partials/catalog-rows.html")]
+pub struct CatalogRowsTemplate {
+    pub rows: Vec<AsteroidCatalogRecord>,
+    /// Opaque cursor for the next page, or `None` if this was the last page.
+    /// Emitted as an out-of-band swap so the pagination footer's Next
+    /// button stays in sync with whatever page is currently displayed.
+    pub next_cursor: Option<String>,
+    /// Whether to render the out-of-band Next-button and sort-header sync
+    /// blocks. `true` for the live `/dashboard/catalog/rows` response;
+    /// `false` when pre-rendering rows to embed in [`CatalogTemplate`],
+    /// which renders its own Next button and header row directly (embedded
+    /// OOB copies would collide on `id`).
+    pub oob_next_button: bool,
+    /// Active sort key, serialized form (e.g. `"name"`) — used to render
+    /// the out-of-band sort-header active/toggle state.
+    pub sort: String,
+    /// Active sort direction, `"asc"` or `"desc"`.
+    pub sort_dir: String,
+    /// Current filter values as a URL query fragment (leading `&`, or
+    /// empty), so sort-header links preserve the active filters.
+    pub query_string: String,
+}
+
+impl IntoResponse for CatalogRowsTemplate {
+    fn into_response(self) -> Response {
+        match self.render() {
+            Ok(html) => Html(html).into_response(),
+            Err(err) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to render template: {}", err),
+            )
+                .into_response(),
+        }
+    }
+}
+
+/// Askama template for the asteroid detail page.
+#[derive(Template)]
+#[template(path = "dashboard/catalog-detail.html")]
+pub struct CatalogDetailTemplate {
+    pub asteroid: AsteroidDetailRecord,
+    /// Nearest neighbors by pgvector embedding distance (M5). Empty if the
+    /// asteroid hasn't been vectorized yet — an operational state, not an
+    /// error, so the template renders nothing rather than an empty-state card.
+    pub similar: Vec<AsteroidCatalogRecord>,
+}
+
+impl IntoResponse for CatalogDetailTemplate {
     fn into_response(self) -> Response {
         match self.render() {
             Ok(html) => Html(html).into_response(),

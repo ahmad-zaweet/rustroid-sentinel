@@ -35,6 +35,8 @@ async fn main() {
             miss_distance_km,
             velocity_km_h,
             diameter_avg_km,
+            torino_scale: None,
+            palermo_scale: None,
         })
         .await
     {

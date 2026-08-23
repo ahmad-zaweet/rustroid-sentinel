@@ -2,8 +2,8 @@ FROM lukemathwalker/cargo-chef:0.1.77-rust-alpine3.24 AS chef
 
 WORKDIR /app
 
-# Install build dependencies (required for your crates)
-RUN apk add --no-cache musl-dev openssl-dev clang lld
+# Install build dependencies (required for your crates) + Node for the CSS build step
+RUN apk add --no-cache musl-dev openssl-dev clang lld nodejs npm
 
 ### Step 1 - Plan
 FROM chef AS planner
@@ -33,6 +33,10 @@ COPY templates ./templates
 COPY migrations ./migrations
 COPY config ./config
 COPY static ./static
+COPY package.json package-lock.json ./
+
+# Compile Tailwind CSS so the image always ships the freshest dist.css
+RUN npm ci && npm run build:css
 
 # Build the application
 RUN cargo build --release --features "api,alerting,metrics,etl,pg-listen"

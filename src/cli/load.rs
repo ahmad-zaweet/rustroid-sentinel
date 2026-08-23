@@ -80,6 +80,10 @@ struct LoadStats {
     /// Newly-inserted `Critical`/`High` approaches, accumulated across every
     /// file in this run and published to `/internal/events` at the end.
     new_hazard_events: Vec<HazardEvent>,
+    /// Ids of asteroids newly inserted (not merely updated) across every
+    /// file in this run, so the pipeline can scope follow-up Sentry/orbit
+    /// enrichment to just-arrived rows.
+    new_asteroid_ids: Vec<Uuid>,
 }
 
 impl LoadStats {
@@ -91,6 +95,7 @@ impl LoadStats {
         self.total_approaches_inserted += other.total_approaches_inserted;
         self.total_approaches_skipped += other.total_approaches_skipped;
         self.new_hazard_events.extend(other.new_hazard_events);
+        self.new_asteroid_ids.extend(other.new_asteroid_ids);
     }
 }
 
@@ -108,7 +113,7 @@ impl LoadStats {
 /// Returns an error if database connection, migrations, or any file load fails.
 #[allow(clippy::cognitive_complexity)]
 #[allow(clippy::too_many_lines)]
-pub async fn execute(args: LoadArgs, settings: RustroidSentinelConfig) -> Result<()> {
+pub async fn execute(args: LoadArgs, settings: RustroidSentinelConfig) -> Result<Vec<Uuid>> {
     info!("Starting load command");
 
     if !args.input.exists() {
@@ -123,7 +128,7 @@ pub async fn execute(args: LoadArgs, settings: RustroidSentinelConfig) -> Result
 
     if json_files.is_empty() {
         warn!(path = %args.input.display(), "No transformed JSON files found");
-        return Ok(());
+        return Ok(Vec::new());
     }
 
     info!(count = json_files.len(), "Found transformed files to load");
@@ -133,7 +138,7 @@ pub async fn execute(args: LoadArgs, settings: RustroidSentinelConfig) -> Result
         for file in &json_files {
             info!(path = %file.display(), "Dry run: Would load file");
         }
-        return Ok(());
+        return Ok(Vec::new());
     }
 
     // Connect to the database
@@ -186,7 +191,7 @@ pub async fn execute(args: LoadArgs, settings: RustroidSentinelConfig) -> Result
     print_summary(&stats);
     publish_hazard_events(&settings, &stats.new_hazard_events).await;
     info!("Load completed successfully");
-    Ok(())
+    Ok(stats.new_asteroid_ids)
 }
 
 /// Best-effort publish of newly-inserted hazardous approaches to
@@ -323,6 +328,9 @@ async fn handle_load_success(
     stats
         .new_hazard_events
         .extend(upsert_stats.new_hazard_events.iter().cloned());
+    stats
+        .new_asteroid_ids
+        .extend(upsert_stats.newly_inserted_asteroid_ids.iter().copied());
     stats.files_processed += 1;
 
     // Record success
@@ -410,6 +418,9 @@ async fn stream_and_process_file(
         total_stats.asteroids_updated += batch_stats.asteroids_updated;
         total_stats.approaches_inserted += batch_stats.approaches_inserted;
         total_stats.approaches_skipped += batch_stats.approaches_skipped;
+        total_stats
+            .newly_inserted_asteroid_ids
+            .extend(batch_stats.newly_inserted_asteroid_ids);
     }
 
     if record_count == 0 {

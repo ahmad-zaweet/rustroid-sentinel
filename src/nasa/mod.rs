@@ -7,6 +7,8 @@
 //! ## Submodules
 //!
 //! - [`asteroid_neows`]: Client and types for the NeoWs API
+//! - [`jpl_sentry`]: Client and types for the JPL Sentry impact-monitoring API
+//! - [`jpl_sbdb`]: Client and types for the JPL Small-Body Database API
 //! - [`error`]: Error types specific to NASA API interactions
 //!
 //! ## Supported APIs
@@ -14,6 +16,8 @@
 //! | API | Description | Status |
 //! |-----|-------------|--------|
 //! | NeoWs | Near-Earth Object data | ✅ Implemented |
+//! | Sentry | Impact probability / Torino / Palermo scales | ✅ Implemented |
+//! | SBDB | Orbital elements, orbit class, spectral class, albedo | ✅ Implemented |
 //!
 //! ## Example
 //!
@@ -27,3 +31,5 @@
 
 pub mod asteroid_neows;
 pub mod error;
+pub mod jpl_sbdb;
+pub mod jpl_sentry;

@@ -1,0 +1,236 @@
+{% extends "base.html" %} {% block content %}
+
+<div>
+    <!-- Breadcrumb -->
+    <div class="flex items-center gap-3 pt-6 font-mono text-[10px] tracking-[0.15em] text-[#7B7499]">
+        <a href="/dashboard/catalog" class="text-[#928CAE] hover:text-[#4FE8DC] transition-colors">CATALOG</a>
+        <span>/</span>
+        <span class="text-[#C4B5FD] font-semibold">{{ asteroid.summary.name }}</span>
+    </div>
+
+    <!-- Asteroid Hero -->
+    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-6 sm:gap-8 py-10 sm:py-14 animate-rsRise">
+        <div class="w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 rounded-full border border-purple-300/30 shadow-[0_0_60px_rgba(124,58,237,0.55)] overflow-hidden bg-[#020B15]">
+            <img src="/img/logo-mark.webp" alt="Asteroid Glyph" class="w-full h-full object-cover" />
+        </div>
+        <div class="flex-1 min-w-0">
+            <h1 class="m-0 font-heading font-bold text-3xl sm:text-5xl text-[#F4F1FC] tracking-tight truncate">
+                {{ asteroid.summary.name }}
+            </h1>
+            <div class="flex items-center gap-3 mt-3.5 flex-wrap">
+                <span class="font-mono text-xs text-[#8A83A8]">SPK {{ asteroid.summary.neo_reference_id }}</span>
+                <span class="w-px h-3.5 bg-purple-200/20"></span>
+                {% if asteroid.summary.is_potentially_hazardous %}
+                <span class="badge-hazard badge-high">POTENTIALLY HAZARDOUS</span>
+                {% else %}
+                <span class="badge-hazard badge-low">NON-HAZARDOUS</span>
+                {% endif %}
+                {% if asteroid.summary.is_sentry_object %}
+                <span class="badge-hazard badge-critical">SENTRY RISK LIST</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="flex items-center gap-2.5 flex-shrink-0 mt-2 sm:mt-0">
+            <a
+                href="{{ asteroid.nasa_jpl_url }}"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="btn-action-teal"
+            >
+                JPL SBDB
+            </a>
+        </div>
+    </div>
+
+    <!-- ─────── PHYSICAL DATA SECTION ─────── -->
+    <section class="editorial-section">
+        <div>
+            <div class="editorial-label text-[#4FE8DC]">PHYSICAL</div>
+            <p class="m-0 mt-3 text-xs text-[#8A83A8] leading-relaxed">
+                Derived from NASA NeoWs absolute magnitude and albedo estimates.
+            </p>
+        </div>
+        <div class="flex items-end gap-10 sm:gap-16 flex-wrap">
+            <div>
+                {% let diameter_km = asteroid.summary.estimated_diameter_avg_km %}
+                <div class="font-heading font-bold text-2xl sm:text-4xl text-[#C4B5FD] leading-tight">
+                    {{ format!("{:.3}", diameter_km) }} km
+                </div>
+                <div class="font-mono text-[9px] tracking-[0.2em] text-[#8A83A8] mt-2.5 uppercase">AVG. DIAMETER</div>
+            </div>
+            <div>
+                <div class="font-heading font-bold text-2xl sm:text-4xl text-[#F4F1FC] leading-tight">
+                    {% match asteroid.summary.orbit_class %}
+                    {% when Some with (oc) %}{{ oc }}
+                    {% when None %}&mdash;
+                    {% endmatch %}
+                </div>
+                <div class="font-mono text-[9px] tracking-[0.2em] text-[#8A83A8] mt-2.5 uppercase">ORBIT CLASS</div>
+            </div>
+            <div>
+                <div class="font-heading font-bold text-2xl sm:text-4xl text-[#4FE8DC] leading-tight">
+                    {% match asteroid.summary.spectral_class %}
+                    {% when Some with (sc) %}{{ sc }}
+                    {% when None %}&mdash;
+                    {% endmatch %}
+                </div>
+                <div class="font-mono text-[9px] tracking-[0.2em] text-[#8A83A8] mt-2.5 uppercase">SPECTRAL CLASS</div>
+            </div>
+            <div>
+                <div class="font-heading font-bold text-2xl sm:text-4xl text-[#F97316] leading-tight">
+                    {% match asteroid.summary.torino_scale %}
+                    {% when Some with (t) %}{{ t }}
+                    {% when None %}&mdash;
+                    {% endmatch %}
+                    /
+                    {% match asteroid.summary.palermo_scale %}
+                    {% when Some with (p) %}{{ format!("{:.2}", p) }}
+                    {% when None %}&mdash;
+                    {% endmatch %}
+                </div>
+                <div class="font-mono text-[9px] tracking-[0.2em] text-[#8A83A8] mt-2.5 uppercase">TORINO / PALERMO</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ─────── ORBITAL ELEMENTS SECTION ─────── -->
+    <section class="editorial-section">
+        <div>
+            <div class="editorial-label text-[#C4B5FD]">ORBITAL ELEMENTS</div>
+            <p class="m-0 mt-3 text-xs text-[#8A83A8] leading-relaxed">
+                Keplerian orbital parameters defining the heliocentric trajectory.
+            </p>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-6">
+            <div>
+                <div class="font-mono text-[9px] tracking-[0.19em] text-[#7B7499] uppercase">ECCENTRICITY</div>
+                <div class="font-mono text-lg sm:text-xl text-[#C3BEDA] mt-2">
+                    {% match asteroid.eccentricity %}
+                    {% when Some with (e) %}{{ format!("{:.4}", e) }}
+                    {% when None %}&mdash;
+                    {% endmatch %}
+                </div>
+            </div>
+            <div>
+                <div class="font-mono text-[9px] tracking-[0.19em] text-[#7B7499] uppercase">SEMI-MAJOR AXIS</div>
+                <div class="font-mono text-lg sm:text-xl text-[#C3BEDA] mt-2">
+                    {% match asteroid.semi_major_axis_au %}
+                    {% when Some with (a) %}{{ format!("{:.3}", a) }} AU
+                    {% when None %}&mdash;
+                    {% endmatch %}
+                </div>
+            </div>
+            <div>
+                <div class="font-mono text-[9px] tracking-[0.19em] text-[#7B7499] uppercase">INCLINATION</div>
+                <div class="font-mono text-lg sm:text-xl text-[#C3BEDA] mt-2">
+                    {% match asteroid.inclination_deg %}
+                    {% when Some with (i) %}{{ format!("{:.2}", i) }}°
+                    {% when None %}&mdash;
+                    {% endmatch %}
+                </div>
+            </div>
+            <div>
+                <div class="font-mono text-[9px] tracking-[0.19em] text-[#7B7499] uppercase">ALBEDO</div>
+                <div class="font-mono text-lg sm:text-xl text-[#C3BEDA] mt-2">
+                    {% match asteroid.albedo %}
+                    {% when Some with (al) %}{{ format!("{:.3}", al) }}
+                    {% when None %}&mdash;
+                    {% endmatch %}
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ─────── APPROACH HISTORY SECTION ─────── -->
+    <section class="editorial-section">
+        <div>
+            <div class="editorial-label text-[#4FE8DC]">APPROACH HISTORY</div>
+            <p class="m-0 mt-3 text-xs text-[#8A83A8] leading-relaxed">
+                All recorded historical and future close approaches for this object.
+            </p>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left" role="table">
+                <thead>
+                    <tr class="border-b border-purple-200/10">
+                        <th class="py-3 px-2 font-mono text-[9px] tracking-[0.2em] uppercase text-[#7B7499]" scope="col">DATE</th>
+                        <th class="py-3 px-2 font-mono text-[9px] tracking-[0.2em] uppercase text-[#7B7499]" scope="col">VELOCITY</th>
+                        <th class="py-3 px-2 font-mono text-[9px] tracking-[0.2em] uppercase text-[#7B7499] hidden sm:table-cell" scope="col">MISS DISTANCE</th>
+                        <th class="py-3 px-2 font-mono text-[9px] tracking-[0.2em] uppercase text-[#7B7499]" scope="col">HAZARD</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-purple-200/5">
+                    {% if asteroid.approaches.is_empty() %}
+                    <tr>
+                        <td colspan="4" class="py-8 text-center text-xs text-[#8A83A8] font-mono">
+                            No close approaches on record
+                        </td>
+                    </tr>
+                    {% else %}
+                    {% for approach in asteroid.approaches %}
+                    {% let vel_k = approach.velocity_km_per_h / 1000.0 %}
+                    {% let miss_m = approach.miss_distance_km / 1000000.0 %}
+                    <tr class="table-row-hover">
+                        <td class="py-3.5 px-2 text-xs text-[#C3BEDA] font-mono whitespace-nowrap">
+                            {{ approach.close_approach_date.format("%b %e, %Y") }}
+                        </td>
+                        <td class="py-3.5 px-2 font-mono text-xs text-[#4FE8DC] font-semibold whitespace-nowrap">
+                            {{ format!("{:.0}", vel_k) }}K km/h
+                        </td>
+                        <td class="py-3.5 px-2 font-mono text-xs text-[#38BDF8] font-semibold whitespace-nowrap hidden sm:table-cell">
+                            {{ format!("{:.2}", miss_m) }}M km
+                        </td>
+                        <td class="py-3.5 px-2 whitespace-nowrap">
+                            {% if approach.hazard_classification == "Critical" %}
+                            <span class="badge-hazard badge-critical">{{ approach.hazard_classification }}</span>
+                            {% else if approach.hazard_classification == "High" %}
+                            <span class="badge-hazard badge-high">{{ approach.hazard_classification }}</span>
+                            {% else if approach.hazard_classification == "Medium" %}
+                            <span class="badge-hazard badge-medium">{{ approach.hazard_classification }}</span>
+                            {% else %}
+                            <span class="badge-hazard badge-low">{{ approach.hazard_classification }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- ─────── SIMILAR OBJECTS (CARDS EARN THEIR KEEP) ─────── -->
+    {% if !similar.is_empty() %}
+    <section class="editorial-section">
+        <div>
+            <div class="editorial-label text-[#C4B5FD]">SIMILAR OBJECTS</div>
+            <p class="m-0 mt-3 text-xs text-[#8A83A8] leading-relaxed">
+                Nearest matches by diameter and pgvector embedding distance.
+            </p>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {% for row in similar %}
+            {% let row_diam = row.estimated_diameter_avg_km %}
+            <a href="/dashboard/catalog/{{ row.neo_reference_id }}" class="similar-card-wrap block group">
+                <div class="similar-card-inner">
+                    <span class="w-6 h-6 flex-shrink-0 rounded-lg border border-purple-300/20 bg-[radial-gradient(circle_at_32%_26%,rgba(233,226,255,0.5),rgba(124,58,237,0.3)_52%,rgba(9,7,22,0.95))] block"></span>
+                    <div class="font-heading font-semibold text-sm text-[#F4F1FC] mt-4 group-hover:text-[#4FE8DC] transition-colors truncate">
+                        {{ row.name }}
+                    </div>
+                    <div class="font-mono text-xs text-[#C4B5FD] mt-2">
+                        {{ format!("{:.3}", row_diam) }} km
+                    </div>
+                    <div class="font-mono text-[10px] text-[#7B7499] mt-2 uppercase">
+                        {% match row.orbit_class %}
+                        {% when Some with (oc) %}{{ oc }}
+                        {% when None %}ORBIT &mdash;
+                        {% endmatch %}
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+</div>
+{% endblock %}

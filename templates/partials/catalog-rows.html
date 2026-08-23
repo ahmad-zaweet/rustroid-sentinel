@@ -1,0 +1,101 @@
+{% if rows.is_empty() %}
+<tr>
+    <td colspan="9" class="py-16 text-center">
+        <div class="flex flex-col items-center gap-3">
+            <div class="w-10 h-10 rounded-full border border-dashed border-purple-200/30"></div>
+            <div class="font-heading font-semibold text-base text-[#F4F1FC]">No asteroids match your filters</div>
+            <p class="text-xs text-[#8A83A8]">Try clearing your search query or relaxing filter criteria.</p>
+        </div>
+    </td>
+</tr>
+{% else %}
+{% for row in rows %}
+<tr class="table-row-hover">
+    <td class="py-3.5 px-2">
+        <a href="/dashboard/catalog/{{ row.neo_reference_id }}" class="flex items-center gap-3 min-w-0 group">
+            <span class="w-7 h-7 flex-shrink-0 rounded-lg border border-purple-300/20 bg-[radial-gradient(circle_at_32%_26%,rgba(233,226,255,0.5),rgba(124,58,237,0.3)_52%,rgba(9,7,22,0.95))] transition-transform duration-200 group-hover:scale-105"></span>
+            <span class="font-heading font-semibold text-sm text-[#F4F1FC] group-hover:text-[#4FE8DC] transition-colors whitespace-nowrap">
+                {{ row.name }}
+            </span>
+        </a>
+    </td>
+    <td class="py-3.5 px-2 font-mono text-xs text-[#C4B5FD] font-semibold whitespace-nowrap hidden md:table-cell">
+        {{ format!("{:.3}", row.estimated_diameter_avg_km) }} km
+    </td>
+    <td class="py-3.5 px-2 text-xs text-[#C3BEDA] whitespace-nowrap font-mono hidden sm:table-cell">
+        {% match row.latest_approach_date %}
+        {% when Some with (date) %}{{ date.format("%b %e, %Y") }}
+        {% when None %}&mdash;
+        {% endmatch %}
+    </td>
+    <td class="py-3.5 px-2 text-xs text-[#928CAE] whitespace-nowrap hidden lg:table-cell">
+        {% match row.orbit_class %}
+        {% when Some with (oc) %}{{ oc }}
+        {% when None %}&mdash;
+        {% endmatch %}
+    </td>
+    <td class="py-3.5 px-2 font-mono text-xs text-[#7B7499] whitespace-nowrap hidden lg:table-cell">
+        {% match row.spectral_class %}
+        {% when Some with (sc) %}{{ sc }}
+        {% when None %}&mdash;
+        {% endmatch %}
+    </td>
+    <td class="py-3.5 px-2 font-mono text-xs text-[#7B7499] whitespace-nowrap hidden lg:table-cell">
+        {% match row.torino_scale %}
+        {% when Some with (torino) %}{{ torino }}
+        {% when None %}&mdash;
+        {% endmatch %}
+    </td>
+    <td class="py-3.5 px-2 font-mono text-xs text-[#7B7499] whitespace-nowrap hidden lg:table-cell">
+        {% match row.palermo_scale %}
+        {% when Some with (palermo) %}{{ format!("{:.2}", palermo) }}
+        {% when None %}&mdash;
+        {% endmatch %}
+    </td>
+    <td class="py-3.5 px-2 whitespace-nowrap">
+        <div class="flex items-center gap-1.5">
+            {% if row.is_potentially_hazardous %}
+            <span class="badge-hazard badge-high text-[9px] py-0.5 px-2">PHA</span>
+            {% endif %}
+            {% if row.is_sentry_object %}
+            <span class="badge-hazard badge-critical text-[9px] py-0.5 px-2">SENTRY</span>
+            {% endif %}
+            {% if !row.is_potentially_hazardous && !row.is_sentry_object %}
+            <span class="text-mono text-[10px] text-[#7B7499]">&mdash;</span>
+            {% endif %}
+        </div>
+    </td>
+    <td class="py-3.5 px-2 font-mono text-xs text-[#7B7499] text-right hidden sm:table-cell">
+        {{ row.neo_reference_id }}
+    </td>
+</tr>
+{% endfor %}
+{% endif %}
+{% if oob_next_button %}
+<!-- Out-of-band: keeps the pagination footer's Next button in sync -->
+<button
+    id="catalog-next-btn"
+    hx-swap-oob="true"
+    type="button"
+    {% match next_cursor %}
+    {% when Some with (c) %}
+    data-cursor="{{ c }}"
+    {% when None %}
+    disabled
+    data-cursor=""
+    {% endmatch %}
+    class="btn-action-teal h-[32px] px-4 text-[10px] disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:transform-none"
+>
+    NEXT
+</button>
+
+<!-- Out-of-band: keeps the filter form's hidden sort inputs in sync, so a
+     later filter change doesn't resubmit a stale sort. -->
+<input type="hidden" id="sort-input" name="sort" value="{{ sort }}" hx-swap-oob="true" />
+<input type="hidden" id="sort-dir-input" name="sort_dir" value="{{ sort_dir }}" hx-swap-oob="true" />
+
+<!-- Out-of-band: keeps the sort-header row's active/toggle state in sync. -->
+<tr id="catalog-header-row" hx-swap-oob="true" class="border-b border-purple-200/10">
+    {% include "partials/catalog-header-row.html" %}
+</tr>
+{% endif %}

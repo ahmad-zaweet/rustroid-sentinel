@@ -37,6 +37,20 @@ pub struct Asteroid {
     pub is_sentry_object: bool,
     /// Link to NASA's JPL Small-Body Database page.
     pub nasa_jpl_url: String,
+    /// JPL Sentry Torino Scale value (0-10), if this object is a currently
+    /// tracked virtual impactor. `None` for the vast majority of asteroids,
+    /// which never appear on the Sentry list. Populated by the `sentry` CLI
+    /// command, not by NeoWs ingestion.
+    pub torino_scale: Option<i16>,
+    /// JPL Sentry cumulative Palermo Scale value, if this object is a
+    /// currently tracked virtual impactor. `None` otherwise. Populated by
+    /// the `sentry` CLI command.
+    pub palermo_scale: Option<f64>,
+    /// When this asteroid was last checked against the JPL Sentry API.
+    /// `None` if it has never been checked (bounds the `sentry` command's
+    /// candidate-selection query to PHA/Sentry-flagged rows due for a
+    /// re-check).
+    pub sentry_checked_at: Option<DateTime<Utc>>,
     /// Timestamp when this record was first created.
     pub created_at: DateTime<Utc>,
     /// Timestamp when this record was last updated.
@@ -81,6 +95,9 @@ mod tests {
             is_potentially_hazardous: false,
             is_sentry_object: false,
             nasa_jpl_url: "https://example.com".to_string(),
+            torino_scale: None,
+            palermo_scale: None,
+            sentry_checked_at: None,
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };
@@ -102,6 +119,9 @@ mod tests {
             is_potentially_hazardous: true,
             is_sentry_object: false,
             nasa_jpl_url: "https://example.com".to_string(),
+            torino_scale: None,
+            palermo_scale: None,
+            sentry_checked_at: None,
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };

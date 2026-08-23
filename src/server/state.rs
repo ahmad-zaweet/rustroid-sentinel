@@ -34,6 +34,11 @@ pub struct AppState {
     /// Count of currently-connected SSE subscribers, used to enforce
     /// `ServerConfig.max_hazard_subscribers`.
     pub hazard_subscriber_count: Arc<AtomicUsize>,
+    /// Flips to `true` when the server starts shutting down. SSE handlers
+    /// watch this to end their (otherwise infinite) streams promptly, so
+    /// `axum::serve`'s graceful shutdown — which waits for open connections
+    /// to finish on their own — doesn't hang on clients that never disconnect.
+    pub shutdown: tokio::sync::watch::Receiver<bool>,
 }
 
 impl AppState {
@@ -47,6 +52,7 @@ impl AppState {
         grafana_cloud_prometheus_config: Option<crate::settings::GrafanaCloudPrometheusConfig>,
         events_tx: broadcast::Sender<HazardEvent>,
         internal_event_token: Arc<str>,
+        shutdown: tokio::sync::watch::Receiver<bool>,
     ) -> Self {
         Self {
             db_pool,
@@ -57,6 +63,7 @@ impl AppState {
             events_tx,
             internal_event_token,
             hazard_subscriber_count: Arc::new(AtomicUsize::new(0)),
+            shutdown,
         }
     }
 }

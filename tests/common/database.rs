@@ -129,11 +129,17 @@ impl TestDatabase {
         let migration_003 = include_str!("../../migrations/003_add_diameter_avg_column.sql");
         let migration_004 =
             include_str!("../../migrations/004_add_etl_events_started_at_index.sql");
+        let migration_005 = include_str!("../../migrations/005_add_sentry_hazard_scales.sql");
+        let migration_006 = include_str!("../../migrations/006_add_asteroid_orbits.sql");
+        let migration_007 = include_str!("../../migrations/007_pg_trgm_name_index.sql");
 
         sqlx::raw_sql(migration_001).execute(&self.pool).await?;
         sqlx::raw_sql(migration_002).execute(&self.pool).await?;
         sqlx::raw_sql(migration_003).execute(&self.pool).await?;
         sqlx::raw_sql(migration_004).execute(&self.pool).await?;
+        sqlx::raw_sql(migration_005).execute(&self.pool).await?;
+        sqlx::raw_sql(migration_006).execute(&self.pool).await?;
+        sqlx::raw_sql(migration_007).execute(&self.pool).await?;
 
         Ok(())
     }

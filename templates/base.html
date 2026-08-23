@@ -10,8 +10,7 @@
 
         <!-- Primary SEO Meta Tags -->
         <title>
-            {% block title %}Rustroid Sentinel - Near-Earth Object Monitoring &
-            Analysis{% endblock %}
+            {% block title %}Rustroid Sentinel - Near-Earth Object Monitoring & Analysis{% endblock %}
         </title>
         <meta
             name="description"
@@ -32,7 +31,7 @@
             content="#020B15"
             media="(prefers-color-scheme: dark)"
         />
-        <meta name="color-scheme" content="dark light" />
+        <meta name="color-scheme" content="dark" />
 
         <!-- Canonical URL -->
         <link rel="canonical" href="https://rustroid-sentinel.onrender.com/" />
@@ -56,13 +55,13 @@
         />
         <meta
             property="og:image"
-            content="{% block og_image %}/rustroid-sentinel-cover.png{% endblock %}"
+            content="{% block og_image %}/img/logo-mark.png{% endblock %}"
         />
-        <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="630" />
+        <meta property="og:image:width" content="512" />
+        <meta property="og:image:height" content="512" />
         <meta
             property="og:image:alt"
-            content="{% block og_image_alt %}Rustroid Sentinel NEO Dashboard{% endblock %}"
+            content="{% block og_image_alt %}Rustroid Sentinel Logo Mark{% endblock %}"
         />
         <meta property="og:site_name" content="Rustroid Sentinel" />
         <meta property="og:locale" content="en_US" />
@@ -79,15 +78,14 @@
         />
         <meta
             name="twitter:image"
-            content="{% block twitter_image %}/rustroid-sentinel-cover.png{% endblock %}"
-        />
-        <meta
-            name="twitter:image:alt"
-            content="{% block twitter_image_alt %}Rustroid Sentinel NEO Dashboard{% endblock %}"
+            content="{% block twitter_image %}/img/logo-mark.png{% endblock %}"
         />
 
         <!-- Favicon & Touch Icons -->
         <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32x32.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon-16x16.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/img/apple-touch-icon.png" />
         <meta name="msapplication-TileColor" content="#020B15" />
 
         <!-- Structured Data (JSON-LD) -->
@@ -120,317 +118,142 @@
             }
         </script>
 
-        <!-- Performance: Preconnect to Critical Origins -->
+        <!-- Google Fonts: Exo 2 (heading) + Nunito Sans (body) + JetBrains Mono (mono) -->
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-        <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
-        <link rel="dns-prefetch" href="https://unpkg.com" />
-
-        <!-- Google Fonts: Exo 2 (heading) + Nunito Sans (body) + JetBrains Mono (mono) -->
         <link
             href="https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300;1,400&family=Nunito+Sans:opsz,wght@6..12,300;6..12,400;6..12,600;6..12,700&family=JetBrains+Mono:wght@400;500;600&display=swap"
             rel="stylesheet"
         />
 
-        <!-- Custom CSS -->
-        <link rel="preload" href="/css/styles.css" as="style" />
-        <link rel="preload" href="/css/animations.css" as="style" />
-        <link rel="preload" href="/css/spotlight.css" as="style" />
-        
+        <!-- Compiled Tailwind & Basecoat CSS -->
+        <link rel="stylesheet" href="/css/dist.css" />
 
-        <!-- Tailwind CSS -->
-        <script src="https://cdn.tailwindcss.com"></script>
-        <script src="/js/tailwind.config.js"></script>
-
-        <!-- Core Scripts -->
-        <script src="https://unpkg.com/lucide@0.577.0"></script>
-        <script src="https://unpkg.com/htmx.org@2.0.0"></script>
+        <!-- Core HTMX Scripts -->
+        <script src="https://unpkg.com/htmx.org@2.0.10"></script>
         <script src="https://unpkg.com/htmx-ext-sse@2.2.2"></script>
-
-        <!-- Custom CSS -->
-        <link rel="stylesheet" href="/css/styles.css" />
-        <link rel="stylesheet" href="/css/animations.css" />
-        <link rel="stylesheet" href="/css/spotlight.css" />
 
         {% block head_extra %}{% endblock %}
     </head>
 
-    <body
-        class="text-text-primary min-h-screen relative overflow-x-clip font-body"
-    >
+    <body class="bg-[#050410] text-[#F4F1FC] min-h-screen relative overflow-x-clip font-body selection:bg-nebula-purple/30 selection:text-white">
         <!-- Skip Navigation Link for Accessibility -->
         <a
             href="#main-content"
-            class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-nebula-purple focus:text-white focus:rounded"
+            class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-nebula-purple focus:text-white focus:rounded-lg focus:font-mono focus:text-xs"
         >
             Skip to main content
         </a>
 
+        <!-- Atmospheric Canvas Starfield -->
+        <canvas
+            id="stars-canvas"
+            class="fixed inset-0 w-full h-full pointer-events-none z-0"
+        ></canvas>
+
+        <!-- Ambient Nebula Aurora Blooms (Drifting) -->
+        <div class="fixed inset-[-20vh_-20vw] pointer-events-none z-0 filter blur-[90px] opacity-55">
+            <div class="absolute left-[8%] top-0 w-[44vw] h-[44vw] rounded-full bg-[radial-gradient(circle,rgba(124,58,237,0.42),transparent_66%)] animate-rsDrift"></div>
+            <div class="absolute right-[4%] top-[14%] w-[36vw] h-[36vw] rounded-full bg-[radial-gradient(circle,rgba(45,212,191,0.2),transparent_66%)] animate-[rsDrift_44s_ease-in-out_infinite_reverse]"></div>
+            <div class="absolute left-[36%] bottom-[-14%] w-[52vw] h-[38vw] rounded-full bg-[radial-gradient(circle,rgba(91,47,214,0.22),transparent_68%)] animate-[rsDrift_58s_ease-in-out_infinite]"></div>
+        </div>
+
+        <!-- Vignette & Subtle Noise Overlay -->
+        <div class="fixed inset-0 pointer-events-none z-[1] bg-[radial-gradient(ellipse_120%_78%_at_50%_118%,rgba(0,0,0,0.82),transparent_58%)]"></div>
+        <div class="fixed inset-0 pointer-events-none z-[1] opacity-5 mix-blend-overlay" style="background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E&quot;);"></div>
+
+        <!-- ═══ Welcome Banner (Mission Briefing Modal) ═════════════════ -->
         <div
             id="welcome-banner"
             role="dialog"
             aria-modal="true"
             aria-label="Welcome to Rustroid Sentinel"
+            style="display: none;"
+            class="fixed inset-0 z-50 items-center justify-center p-4 sm:p-6 bg-[#050410]/80 backdrop-blur-xl transition-opacity duration-300"
         >
-            <!-- Layered background: ambient glows + scan grid -->
-            <div
-                class="welcome-banner-bg absolute inset-0"
-                aria-hidden="true"
-            ></div>
-            <div
-                class="scan-grid absolute inset-0"
-                style="opacity: 0.45"
-                aria-hidden="true"
-            ></div>
+            <div class="relative w-full max-w-xl rounded-3xl p-[1.5px] overflow-hidden bg-gradient-to-b from-purple-300/25 via-purple-500/10 to-teal-400/20 shadow-2xl animate-rsRise">
+                <div class="relative rounded-[23px] bg-gradient-to-b from-[#0E0A1E] to-[#070512] p-6 sm:p-8 overflow-hidden">
+                    <!-- Ambient spotlight inside dialog -->
+                    <div class="absolute -top-24 -left-24 w-72 h-72 rounded-full bg-nebula-purple/20 blur-3xl pointer-events-none"></div>
+                    <div class="absolute -bottom-24 -right-24 w-72 h-72 rounded-full bg-nebula-cyan/15 blur-3xl pointer-events-none"></div>
 
-            <!-- Centered content -->
-            <div
-                class="relative z-10 flex flex-col items-center justify-center min-h-screen py-10 px-4 sm:px-8"
-            >
-                <div class="w-full max-w-xl">
-                    <!-- Logo + heading -->
-                    <div class="text-center mb-7">
-                        <div
-                            class="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4"
-                            style="
-                                background: linear-gradient(
-                                    135deg,
-                                    rgba(124, 58, 237, 0.2),
-                                    rgba(45, 212, 191, 0.14)
-                                );
-                                border: 1px solid rgba(45, 212, 191, 0.22);
-                            "
-                        >
-                            <i
-                                data-lucide="satellite"
-                                class="w-6 h-6 text-nebula-purple"
-                            ></i>
+                    <!-- Header with Logo Mark -->
+                    <div class="relative z-10 text-center mb-6">
+                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 shadow-[0_0_40px_rgba(124,58,237,0.55)] border border-purple-300/30 overflow-hidden bg-[#020B15]">
+                            <img src="/img/logo-mark.webp" alt="Rustroid Sentinel Logo" class="w-full h-full object-cover" />
                         </div>
 
-                        <div
-                            class="flex items-center justify-center gap-3 mb-2"
-                        >
-                            <div
-                                class="h-px w-12 bg-gradient-to-r from-transparent to-nebula-cyan/35"
-                            ></div>
-                            <span class="section-label text-nebula-cyan"
-                                >Mission Briefing</span
-                            >
-                            <div
-                                class="h-px w-12 bg-gradient-to-l from-transparent to-nebula-cyan/35"
-                            ></div>
+                        <div class="flex items-center justify-center gap-3 mb-2">
+                            <span class="h-px w-10 bg-gradient-to-r from-transparent to-[#4FE8DC]/40"></span>
+                            <span class="font-mono text-[9.5px] tracking-[0.24em] text-[#4FE8DC] uppercase font-semibold">Mission Briefing</span>
+                            <span class="h-px w-10 bg-gradient-to-l from-transparent to-[#4FE8DC]/40"></span>
                         </div>
 
-                        <h1
-                            class="text-4xl sm:text-5xl font-heading font-bold gradient-text tracking-tight leading-none mb-2"
-                        >
+                        <h1 class="text-3xl sm:text-4xl font-heading font-extrabold gradient-title-shimmer tracking-tight mb-1.5">
                             RUSTROID SENTINEL
                         </h1>
-                        <p
-                            class="text-[11px] font-mono text-text-muted uppercase tracking-[0.2em]"
-                        >
+                        <p class="text-[10px] font-mono text-[#8A83A8] uppercase tracking-[0.24em]">
                             Near-Earth Object Monitoring System
                         </p>
                     </div>
 
-                    <!-- Description card -->
-                    <div class="glass-card rounded-2xl p-5 mb-5 text-center">
-                        <p
-                            class="text-text-secondary font-body text-sm leading-relaxed"
-                        >
-                            A high-performance
-                            <span class="text-nebula-pink font-semibold"
-                                >Rust</span
-                            >
-                            backend continuously extracting and analysing data
-                            from the
-                            <span class="text-nebula-blue font-semibold"
-                                >NASA NeoWs API</span
-                            >. It classifies potentially hazardous near-Earth
-                            objects, fires
-                            <span class="text-nebula-purple font-semibold"
-                                >Discord alerts</span
-                            >
-                            on critical approaches, and exposes a real-time
-                            dashboard backed by an async ETL pipeline and
-                            distributed observability.
+                    <!-- Description -->
+                    <div class="relative z-10 p-4 rounded-xl border border-purple-200/10 bg-white/[0.02] text-center mb-5">
+                        <p class="text-sm text-[#C3BEDA] leading-relaxed">
+                            A high-performance <span class="text-[#F59E0B] font-semibold">Rust</span> backend continuously analyzing data from the <span class="text-[#38BDF8] font-semibold">NASA NeoWs API</span>. Classifies potentially hazardous NEOs, fires Discord alerts, and exposes an editorial real-time telemetry stream.
                         </p>
                     </div>
 
-                    <!-- 4 features — 2 × 2 grid -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
-                        <div class="banner-feature-card">
-                            <div
-                                class="w-8 h-8 rounded-lg bg-nebula-blue/10 border-nebula-blue/18 flex items-center justify-center flex-shrink-0"
-                            >
-                                <i
-                                    data-lucide="database"
-                                    class="w-4 h-4 text-nebula-blue"
-                                ></i>
-                            </div>
+                    <!-- 2x2 Feature Matrix -->
+                    <div class="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-6">
+                        <div class="p-3 rounded-xl border border-purple-200/10 bg-white/[0.02] flex items-start gap-3">
+                            <span class="w-2 h-2 rounded-full bg-nebula-blue mt-1.5 shadow-[0_0_10px_#38BDF8]"></span>
                             <div>
-                                <p
-                                    class="text-[10px] font-mono font-bold text-text-primary uppercase tracking-wider mb-1"
-                                >
-                                    ETL Pipeline
-                                </p>
-                                <p
-                                    class="text-xs text-text-muted font-body leading-relaxed"
-                                >
-                                    Extracts, transforms, and loads NASA NEO
-                                    data into PostgreSQL via async Rust
-                                    pipelines
-                                </p>
+                                <div class="font-mono text-[10px] uppercase tracking-wider text-[#F4F1FC] font-semibold">ETL Pipeline</div>
+                                <div class="text-[11px] text-[#8A83A8] mt-0.5 leading-snug">Async Rust loading into PostgreSQL</div>
                             </div>
                         </div>
-
-                        <div class="banner-feature-card">
-                            <div
-                                class="w-8 h-8 rounded-lg bg-hazard-critical/10 border-hazard-critical/18 flex items-center justify-center flex-shrink-0"
-                            >
-                                <i
-                                    data-lucide="triangle-alert"
-                                    class="w-4 h-4 text-hazard-critical"
-                                ></i>
-                            </div>
+                        <div class="p-3 rounded-xl border border-purple-200/10 bg-white/[0.02] flex items-start gap-3">
+                            <span class="w-2 h-2 rounded-full bg-hazard-critical mt-1.5 shadow-[0_0_10px_#EF4444]"></span>
                             <div>
-                                <p
-                                    class="text-[10px] font-mono font-bold text-text-primary uppercase tracking-wider mb-1"
-                                >
-                                    Hazard Detection
-                                </p>
-                                <p
-                                    class="text-xs text-text-muted font-body leading-relaxed"
-                                >
-                                    Classifies NEOs into Critical / High /
-                                    Medium / Low based on velocity and miss
-                                    distance
-                                </p>
+                                <div class="font-mono text-[10px] uppercase tracking-wider text-[#F4F1FC] font-semibold">Hazard Detection</div>
+                                <div class="text-[11px] text-[#8A83A8] mt-0.5 leading-snug">Critical / High / Medium / Low tiers</div>
                             </div>
                         </div>
-
-                        <div class="banner-feature-card">
-                            <div
-                                class="w-8 h-8 rounded-lg bg-nebula-purple/10 border-nebula-purple/18 flex items-center justify-center flex-shrink-0"
-                            >
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 24 24"
-                                    fill="currentColor"
-                                    class="w-4 h-4 text-nebula-purple"
-                                    width="16"
-                                    height="16"
-                                >
-                                    <path
-                                        d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189z"
-                                    />
-                                </svg>
-                            </div>
+                        <div class="p-3 rounded-xl border border-purple-200/10 bg-white/[0.02] flex items-start gap-3">
+                            <span class="w-2 h-2 rounded-full bg-nebula-purple mt-1.5 shadow-[0_0_10px_#7C3AED]"></span>
                             <div>
-                                <p
-                                    class="text-[10px] font-mono font-bold text-text-primary uppercase tracking-wider mb-1"
-                                >
-                                    Discord Alerts
-                                </p>
-                                <p
-                                    class="text-xs text-text-muted font-body leading-relaxed"
-                                >
-                                    Automated webhook embeds sent to Discord on
-                                    critical NEO approach detection events
-                                </p>
+                                <div class="font-mono text-[10px] uppercase tracking-wider text-[#F4F1FC] font-semibold">Discord Alerts</div>
+                                <div class="text-[11px] text-[#8A83A8] mt-0.5 leading-snug">Rich automated webhook embeds</div>
                             </div>
                         </div>
-
-                        <div class="banner-feature-card">
-                            <div
-                                class="w-8 h-8 rounded-lg bg-nebula-cyan/10 border-nebula-cyan/18 flex items-center justify-center flex-shrink-0"
-                            >
-                                <i
-                                    data-lucide="activity"
-                                    class="w-4 h-4 text-nebula-cyan"
-                                ></i>
-                            </div>
+                        <div class="p-3 rounded-xl border border-purple-200/10 bg-white/[0.02] flex items-start gap-3">
+                            <span class="w-2 h-2 rounded-full bg-nebula-cyan mt-1.5 shadow-[0_0_10px_#2DD4BF]"></span>
                             <div>
-                                <p
-                                    class="text-[10px] font-mono font-bold text-text-primary uppercase tracking-wider mb-1"
-                                >
-                                    Observability
-                                </p>
-                                <p
-                                    class="text-xs text-text-muted font-body leading-relaxed"
-                                >
-                                    OpenTelemetry tracing, Prometheus metrics,
-                                    and real-time velocity dashboard
-                                </p>
+                                <div class="font-mono text-[10px] uppercase tracking-wider text-[#F4F1FC] font-semibold">Observability</div>
+                                <div class="text-[11px] text-[#8A83A8] mt-0.5 leading-snug">OTel tracing, Prometheus, live SSE</div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Tech stack badges -->
-                    <div
-                        class="flex flex-wrap items-center justify-center gap-2 mb-7"
-                    >
-                        <span
-                            class="px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold bg-nebula-pink/10 border border-nebula-pink/20 text-nebula-pink uppercase tracking-wider"
-                            >Rust 1.95+</span
-                        >
-                        <span
-                            class="px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold bg-nebula-blue/10 border border-nebula-blue/20 text-nebula-blue uppercase tracking-wider"
-                            >Axum</span
-                        >
-                        <span
-                            class="px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold bg-nebula-cyan/10 border border-nebula-cyan/20 text-nebula-cyan uppercase tracking-wider"
-                            >PostgreSQL</span
-                        >
-                        <span
-                            class="px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold bg-nebula-purple/10 border border-nebula-purple/20 text-nebula-purple uppercase tracking-wider"
-                            >OpenTelemetry</span
-                        >
-                        <span
-                            class="px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold bg-white/5 border border-white/10 text-text-tertiary uppercase tracking-wider"
-                            >NASA NeoWs</span
-                        >
+                    <!-- Tech stack tags -->
+                    <div class="relative z-10 flex flex-wrap items-center justify-center gap-1.5 mb-6">
+                        <span class="px-2.5 py-1 rounded-md text-[9.5px] font-mono bg-nebula-pink/10 border border-nebula-pink/20 text-[#F59E0B] uppercase tracking-wider font-semibold">Rust 1.95+</span>
+                        <span class="px-2.5 py-1 rounded-md text-[9.5px] font-mono bg-nebula-blue/10 border border-nebula-blue/20 text-[#38BDF8] uppercase tracking-wider font-semibold">Axum</span>
+                        <span class="px-2.5 py-1 rounded-md text-[9.5px] font-mono bg-nebula-cyan/10 border border-nebula-cyan/20 text-[#2DD4BF] uppercase tracking-wider font-semibold">PostgreSQL</span>
+                        <span class="px-2.5 py-1 rounded-md text-[9.5px] font-mono bg-nebula-purple/10 border border-nebula-purple/20 text-[#C4B5FD] uppercase tracking-wider font-semibold">Askama + HTMX</span>
                     </div>
 
                     <!-- CTA -->
-                    <div class="text-center">
-                        <div class="banner-cta-wrap">
-                            <div class="banner-cta-ring"></div>
-                            <button
-                                id="banner-cta"
-                                class="group relative inline-flex items-center gap-3 px-8 py-3.5 rounded-xl font-heading font-bold text-sm text-white uppercase tracking-wider transition-all duration-300 hover:scale-105 overflow-hidden"
-                                style="
-                                    background: linear-gradient(
-                                        135deg,
-                                        #7c3aed 0%,
-                                        #2dd4bf 100%
-                                    );
-                                "
-                            >
-                                <span
-                                    class="absolute inset-0 bg-white opacity-0 group-hover:opacity-[0.08] transition-opacity duration-300"
-                                ></span>
-                                <i
-                                    data-lucide="rocket"
-                                    class="w-4 h-4 relative z-10 group-hover:animate-float"
-                                ></i>
-                                <span class="relative z-10"
-                                    >LAUNCH DASHBOARD</span
-                                >
-                                <i
-                                    data-lucide="arrow-right"
-                                    class="w-4 h-4 relative z-10 transition-transform duration-200 group-hover:translate-x-0.5"
-                                ></i>
-                            </button>
-                        </div>
-                        <p
-                            class="text-[10px] font-mono text-text-muted mt-3 flex items-center justify-center gap-2"
+                    <div class="relative z-10 text-center">
+                        <button
+                            id="banner-cta"
+                            class="w-full sm:w-auto px-8 py-3.5 rounded-xl font-mono text-xs font-semibold text-[#050410] bg-gradient-to-r from-[#C4B5FD] via-[#A5F3EB] to-[#2DD4BF] hover:shadow-[0_0_30px_rgba(45,212,191,0.45)] uppercase tracking-wider transition-all duration-300 transform hover:-translate-y-0.5 cursor-pointer"
                         >
-                            <kbd
-                                class="px-1.5 py-0.5 rounded bg-white/[0.07] border border-white/10 text-text-tertiary font-mono text-[9px]"
-                                >ESC</kbd
-                            >
-                            to skip
+                            LAUNCH DASHBOARD
+                        </button>
+                        <p class="text-[9.5px] font-mono text-[#8A83A8] mt-3 flex items-center justify-center gap-1.5">
+                            Press <kbd class="px-1.5 py-0.5 rounded bg-white/10 border border-white/15 text-[#C3BEDA] text-[9px]">ESC</kbd> to skip
                         </p>
                     </div>
                 </div>
@@ -438,38 +261,31 @@
         </div>
         <!-- ═══ End Welcome Banner ═══════════════════════════════════════ -->
 
-        <!-- Deep navy space background -->
-        <div class="space-bg" aria-hidden="true"></div>
+        <div class="relative z-[2] min-h-screen flex flex-col">
+            {% include "partials/header.html" %}
 
-        <!-- Subtle scan-grid texture overlay -->
-        <div class="scan-grid" aria-hidden="true"></div>
+            <!-- Main Content Container -->
+            <main
+                id="main-content"
+                class="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-8 lg:px-14 pb-24"
+                role="main"
+                aria-label="Main content"
+            >
+                {% block content %}{% endblock %}
+            </main>
 
-        <!-- Star field -->
-        <div class="stars" id="stars" aria-hidden="true"></div>
+            {% include "partials/footer.html" %}
+        </div>
 
-        {% include "partials/header.html" %}
-
-        <!-- Main Content -->
-        <main
-            id="main-content"
-            class="container mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-5 animate-fade-slide-up"
-            role="main"
-            aria-label="Main content"
-        >
-            {% block content %}{% endblock %}
-        </main>
-
-        {% include "partials/footer.html" %}
-
-        <!-- Third-party scripts -->
+        <!-- Third-party Chart.js for velocity trajectory -->
         <script
             src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"
             defer
         ></script>
 
-        <!-- Custom scripts -->
-        <script src="/js/welcome.js" defer></script>
+        <!-- Sentinel Core Interactive Scripts -->
         <script src="/js/dashboard.js" defer></script>
+        <script src="/js/welcome.js" defer></script>
         <script src="/js/interactions.js" defer></script>
 
         {% block scripts_extra %}{% endblock %}

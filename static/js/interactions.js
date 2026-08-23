@@ -7,8 +7,10 @@
 // Spotlight Hover Effect — teal variant
 // ============================================
 function initSpotlightEffects() {
+  if (prefersReducedMotion()) return;
+
   const spotlightCards = document.querySelectorAll(
-    ".spotlight-card, .stat-card, .chart-card",
+    ".spotlight-card, .stat-card-gradient, .chart-card, .similar-card-wrap, .active-hazard-wrap",
   );
 
   spotlightCards.forEach((card) => {
@@ -45,8 +47,13 @@ function initSpotlightEffects() {
 // ============================================
 function animateEntrance() {
   const elements = document.querySelectorAll(
-    ".stat-card, .metric-card, .glass-card",
+    ".stat-card-gradient, .metric-card, .glass-card",
   );
+
+  if (prefersReducedMotion()) {
+    elements.forEach((el) => el.classList.add("animate-fade-slide-up"));
+    return;
+  }
 
   const observer = new IntersectionObserver(
     (entries) => {
@@ -156,6 +163,8 @@ function escapeHtml(text) {
 document.addEventListener("DOMContentLoaded", () => {
   initSpotlightEffects();
   animateEntrance();
+  initSseConnectionState();
+  initMobileNav();
 
   if (prefersReducedMotion()) {
     console.log("[sentinel] Reduced motion preference detected.");
@@ -163,66 +172,85 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ============================================
-// Hazard Dropdown — UI only (HTMX sends the request)
+// Mobile Nav Drawer
 // ============================================
-document.addEventListener("click", (e) => {
-  const dropdown = document.getElementById("hazard-dropdown");
-  if (!dropdown) return;
+function initMobileNav() {
+  const toggle = document.getElementById("mobile-nav-toggle");
+  const drawer = document.getElementById("mobile-nav-drawer");
+  const iconOpen = document.getElementById("mobile-nav-icon-open");
+  const iconClose = document.getElementById("mobile-nav-icon-close");
+  if (!toggle || !drawer) return;
 
-  if (e.target.closest("#hazard-dropdown-trigger")) {
-    toggleDropdown();
-    return;
-  }
+  const close = () => {
+    drawer.classList.add("hidden");
+    drawer.classList.remove("flex");
+    toggle.setAttribute("aria-expanded", "false");
+    iconOpen?.classList.remove("hidden");
+    iconClose?.classList.add("hidden");
+  };
 
-  const option = e.target.closest(".hazard-option");
-  if (option) {
-    const value = option.dataset.value;
-    selectOption(value);
-    return;
-  }
+  const open = () => {
+    drawer.classList.remove("hidden");
+    drawer.classList.add("flex");
+    toggle.setAttribute("aria-expanded", "true");
+    iconOpen?.classList.add("hidden");
+    iconClose?.classList.remove("hidden");
+  };
 
-  if (!dropdown.contains(e.target)) {
-    closeDropdown();
-  }
-});
+  toggle.addEventListener("click", () => {
+    const isOpen = toggle.getAttribute("aria-expanded") === "true";
+    isOpen ? close() : open();
+  });
 
-function toggleDropdown() {
-  const menu = document.getElementById("hazard-dropdown-menu");
-  const trigger = document.getElementById("hazard-dropdown-trigger");
-  const isOpen = menu.classList.contains("open");
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") close();
+  });
 
-  if (isOpen) {
-    closeDropdown();
-  } else {
-    menu.classList.add("open");
-    trigger.setAttribute("aria-expanded", "true");
-  }
+  drawer.querySelectorAll("a").forEach((a) => a.addEventListener("click", close));
+
+  document.addEventListener("click", (e) => {
+    if (toggle.getAttribute("aria-expanded") !== "true") return;
+    if (!drawer.contains(e.target) && !toggle.contains(e.target)) close();
+  });
 }
 
-function closeDropdown() {
-  const menu = document.getElementById("hazard-dropdown-menu");
-  const trigger = document.getElementById("hazard-dropdown-trigger");
-  if (!menu || !trigger) return;
-  menu.classList.remove("open");
-  trigger.setAttribute("aria-expanded", "false");
-}
+// ============================================
+// SSE Connection State — header live indicator + toast
+// ============================================
+function initSseConnectionState() {
+  const container = document.getElementById("approaches-container");
+  const dot = document.getElementById("connection-status");
+  const label = document.getElementById("status-text");
+  if (!container || !dot || !label) return;
 
-function selectOption(value) {
-  const hiddenInput = document.getElementById("hazard-filter");
-  const label = document.getElementById("hazard-dropdown-label");
+  let isDown = false;
 
-  if (value === "") {
-    hiddenInput.removeAttribute("name");
-    hiddenInput.value = "";
-  } else {
-    hiddenInput.setAttribute("name", "hazard_class");
-    hiddenInput.value = value;
-  }
+  const markDown = () => {
+    if (isDown) return;
+    isDown = true;
+    dot.classList.remove("bg-hazard-low", "shadow-[0_0_10px_rgba(34,197,94,0.9)]");
+    dot.classList.add("bg-hazard-critical", "shadow-[0_0_10px_rgba(239,68,68,0.9)]");
+    label.textContent = "RECONNECTING";
+    label.classList.remove("text-hazard-low");
+    label.classList.add("text-hazard-critical");
+    showToast("Live feed disconnected — retrying...", "warning");
+  };
 
-  label.textContent = value || "All Hazards";
-  closeDropdown();
+  const markUp = () => {
+    if (!isDown) return;
+    isDown = false;
+    dot.classList.remove("bg-hazard-critical", "shadow-[0_0_10px_rgba(239,68,68,0.9)]");
+    dot.classList.add("bg-hazard-low", "shadow-[0_0_10px_rgba(34,197,94,0.9)]");
+    label.textContent = "SSE LIVE";
+    label.classList.remove("text-hazard-critical");
+    label.classList.add("text-hazard-low");
+  };
 
-  hiddenInput.dispatchEvent(new Event("change", { bubbles: true }));
+  container.addEventListener("htmx:sseError", markDown);
+  container.addEventListener("htmx:sseClose", markDown);
+  container.addEventListener("htmx:afterSwap", () => {
+    if (isDown) markUp();
+  });
 }
 
 window.RustroidUI = {

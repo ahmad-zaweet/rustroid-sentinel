@@ -43,6 +43,27 @@ max_retries = 3
 retry_delay_ms = 1000
 max_concurrent_requests = 5
 
+[jpl_sentry]
+# JPL Sentry impact-monitoring API (no key required). Used by the `sentry`
+# CLI command to populate torino_scale/palermo_scale on PHA/Sentry-flagged
+# asteroids.
+base_url = "https://ssd-api.jpl.nasa.gov/sentry.api"
+# Courtesy delay between per-asteroid lookups (this API has no rate-limit headers).
+request_delay_ms = 500
+# Days before a previously-checked asteroid is re-checked.
+stale_days = 30
+
+[jpl_sbdb]
+# JPL Small-Body Database API (no key required). Used by the `orbits` CLI
+# command to populate orbital elements/orbit class/spectral class/albedo.
+base_url = "https://ssd-api.jpl.nasa.gov/sbdb.api"
+# Courtesy delay between per-asteroid lookups (this API has no rate-limit
+# headers, and throttles harder than jpl_sentry under sustained load).
+request_delay_ms = 1000
+# Days before a previously-checked asteroid's orbit is re-fetched. Orbits
+# change slowly, so this is longer than jpl_sentry's stale_days.
+stale_days = 90
+
 [discord]
 # Webhook URL (overridden in runtime by .env)
 webhook_url = "..."

@@ -35,11 +35,15 @@
 //!     miss_distance_km: 150_000.0,
 //!     velocity_km_h: 72_000.0,
 //!     diameter_avg_km: 0.75,
+//!     torino_scale: None,
+//!     palermo_scale: None,
 //! }).await?;
 //! # Ok(())
 //! # }
 //! ```
 
+use crate::api::handlers::dashboard::format_number;
+use crate::database::report::WeeklyReportSummary;
 use crate::settings::DiscordConfig;
 use serenity::builder::{CreateEmbed, ExecuteWebhook};
 use serenity::http::Http;
@@ -47,6 +51,28 @@ use serenity::model::colour::Colour;
 use serenity::model::webhook::Webhook;
 use std::sync::Arc;
 use tracing::{info, warn};
+
+/// Kilometers per astronomical unit.
+const KM_PER_AU: f64 = 149_597_870.7;
+
+/// Formats a number with thousands separators (e.g. `144832.0` -> `144,832`).
+fn format_commas(num: f64) -> String {
+    let rounded = num.round() as i64;
+    let digits = rounded.abs().to_string();
+    let mut grouped = String::new();
+    for (i, c) in digits.chars().rev().enumerate() {
+        if i > 0 && i % 3 == 0 {
+            grouped.push(',');
+        }
+        grouped.push(c);
+    }
+    let grouped: String = grouped.chars().rev().collect();
+    if rounded < 0 {
+        format!("-{grouped}")
+    } else {
+        grouped
+    }
+}
 
 /// Client for interacting with Discord webhooks.
 ///
@@ -74,6 +100,12 @@ pub struct AsteroidApproachAlert<'a> {
     pub velocity_km_h: f64,
     /// The average (midpoint) estimated diameter in kilometers.
     pub diameter_avg_km: f64,
+    /// JPL Sentry Torino Scale (0-10), if this asteroid is a currently
+    /// tracked virtual impactor.
+    pub torino_scale: Option<i16>,
+    /// JPL Sentry cumulative Palermo Scale, if this asteroid is a currently
+    /// tracked virtual impactor.
+    pub palermo_scale: Option<f64>,
 }
 
 impl DiscordClient {
@@ -115,7 +147,7 @@ impl DiscordClient {
     pub async fn send_alert(
         &self,
         alert: AsteroidApproachAlert<'_>,
-    ) -> Result<(), serenity::Error> {
+    ) -> Result<(), Box<serenity::Error>> {
         if self.config.webhook_url.is_empty() {
             warn!("Discord webhook URL is empty, skipping alert.");
             return Ok(());
@@ -123,12 +155,12 @@ impl DiscordClient {
 
         let webhook = Webhook::from_url(&self.http, &self.config.webhook_url).await?;
 
-        // Modern Hex Color Mapping
+        // Hazard Token Hex Color Mapping
         let color = match alert.hazard {
-            "Critical" => Colour::from_rgb(255, 69, 58), // System Red
-            "High" => Colour::from_rgb(255, 159, 10),    // System Orange
-            "Medium" => Colour::from_rgb(255, 214, 10),  // System Yellow
-            _ => Colour::from_rgb(48, 209, 88),          // System Green
+            "Critical" => Colour::from_rgb(239, 68, 68), // #EF4444 hazard-critical
+            "High" => Colour::from_rgb(249, 115, 22),    // #F97316 hazard-high
+            "Medium" => Colour::from_rgb(234, 179, 8),   // #EAB308 hazard-medium
+            _ => Colour::from_rgb(34, 197, 94),          // #22C55E hazard-low
         };
 
         // Format numbers for readability
@@ -138,26 +170,40 @@ impl DiscordClient {
             format!("{:.0} km", alert.miss_distance_km)
         };
 
-        let vel_str = format!("{:.0} km/h", alert.velocity_km_h);
+        let vel_str = format!("{} km/h", format_commas(alert.velocity_km_h));
         let diameter_str = format!("{:.3} km", alert.diameter_avg_km);
+        let au = alert.miss_distance_km / KM_PER_AU;
+        let torino_str = alert
+            .torino_scale
+            .map(|t| t.to_string())
+            .unwrap_or_else(|| "—".to_string());
 
-        let embed = CreateEmbed::new()
-            .title(format!("{} : {}", alert.title, alert.asteroid_name))
+        let mut embed = CreateEmbed::new()
+            .title(format!("{}: {}", alert.title, alert.asteroid_name))
             .description(format!(
-                "🎯 **Target Identification:** `{}`",
-                alert.asteroid_name
+                "Target crosses inside {au:.2} AU on {}.",
+                alert.date
             ))
             .color(color)
-            .thumbnail("https://img.icons8.com/isometric/512/asteroid.png")
-            .field("📡 Status", format!("**{}**", alert.hazard), true)
-            .field("📅 Approach Date", format!("`{}`", alert.date), true)
-            .field("\u{200B}", "\u{200B}", true) // Spacer for 3-column layout
-            .field("📏 Miss Distance", format!("`{}`", miss_str), true)
-            .field("🚀 Velocity", format!("`{}`", vel_str), true)
-            .field("🪨 Est. Diameter", format!("`{}`", diameter_str), true)
+            .thumbnail("https://rustroid-sentinel.onrender.com/img/logo-mark.png")
+            .field("Status", alert.hazard, true)
+            .field("Approach", format!("{}", alert.date), true)
+            .field("Torino", torino_str, true)
+            .field("Miss distance", miss_str, true)
+            .field("Velocity", vel_str, true)
+            .field("Diameter", diameter_str, true);
+
+        // Only PHA/Sentry-flagged objects that are currently tracked virtual
+        // impactors have a Palermo scale; keep it as a trailing field so it
+        // doesn't disturb the 3-column grid above.
+        if let Some(palermo) = alert.palermo_scale {
+            embed = embed.field("Palermo Scale", format!("{palermo:.2}"), false);
+        }
+
+        let embed = embed
             .footer(
                 serenity::builder::CreateEmbedFooter::new("Rustroid Sentinel")
-                    .icon_url("https://img.icons8.com/color/48/shield.png"),
+                    .icon_url("https://rustroid-sentinel.onrender.com/img/favicon-32x32.png"),
             )
             .timestamp(
                 serenity::model::Timestamp::from_unix_timestamp(chrono::Utc::now().timestamp())
@@ -166,17 +212,112 @@ impl DiscordClient {
 
         let builder = ExecuteWebhook::new()
             .username("Rustroid Sentinel Central")
-            .avatar_url("https://img.icons8.com/color/96/artificial-intelligence.png")
+            .avatar_url("https://rustroid-sentinel.onrender.com/img/logo-mark.png")
             .content(if alert.hazard == "Critical" || alert.hazard == "High" {
-                "🚨 **HIGH ALERT: Potential Impact Risk Detected** 🚨"
+                "Critical approach detected"
             } else {
-                "ℹ️ **Observation: New Near-Earth Object approach recorded**"
+                "New asteroid approach recorded"
             })
             .embeds(vec![embed]);
 
         webhook.execute(&self.http, false, builder).await?;
 
         info!("Sent modernized Discord alert for {}", alert.asteroid_name);
+
+        Ok(())
+    }
+
+    /// Sends the weekly summary report to the configured Discord webhook.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `serenity::Error` if the webhook execution fails.
+    pub async fn send_weekly_report(
+        &self,
+        summary: &WeeklyReportSummary,
+    ) -> Result<(), Box<serenity::Error>> {
+        if self.config.webhook_url.is_empty() {
+            warn!("Discord webhook URL is empty, skipping weekly report.");
+            return Ok(());
+        }
+
+        let webhook = Webhook::from_url(&self.http, &self.config.webhook_url).await?;
+
+        let mut embed = CreateEmbed::new()
+            .title(format!(
+                "Weekly Report · {} → {}",
+                summary.start_date.format("%b %d"),
+                summary.end_date.format("%b %d")
+            ))
+            .description(format!(
+                "{} close approaches recorded this week.",
+                summary.total_approaches
+            ))
+            .color(Colour::from_rgb(124, 58, 237)) // #7C3AED nebula-purple
+            .thumbnail("https://rustroid-sentinel.onrender.com/img/logo-mark.png")
+            .field("Total", format!("{}", summary.total_approaches), true)
+            .field(
+                "Critical / High",
+                format!("{} / {}", summary.critical_count, summary.high_count),
+                true,
+            )
+            .field(
+                "Medium / Low",
+                format!("{} / {}", summary.medium_count, summary.low_count),
+                true,
+            );
+
+        if summary.closest_approach.is_some()
+            || summary.fastest_approach.is_some()
+            || summary.largest_asteroid.is_some()
+        {
+            if let Some(closest) = &summary.closest_approach {
+                embed = embed.field(
+                    "Closest",
+                    format!("{} km", format_number(closest.miss_distance_km)),
+                    true,
+                );
+            }
+
+            if let Some(fastest) = &summary.fastest_approach {
+                embed = embed.field(
+                    "Fastest",
+                    format!("{} km/h", format_commas(fastest.velocity_km_per_h)),
+                    true,
+                );
+            }
+
+            if let Some(largest) = &summary.largest_asteroid {
+                embed = embed.field(
+                    "Largest",
+                    format!("{:.3} km", largest.estimated_diameter_avg_km),
+                    true,
+                );
+            }
+        }
+
+        let embed = embed
+            .footer(
+                serenity::builder::CreateEmbedFooter::new("Rustroid Sentinel")
+                    .icon_url("https://rustroid-sentinel.onrender.com/img/favicon-32x32.png"),
+            )
+            .timestamp(
+                serenity::model::Timestamp::from_unix_timestamp(chrono::Utc::now().timestamp())
+                    .unwrap_or_else(|_| serenity::model::Timestamp::default()),
+            );
+
+        let builder = ExecuteWebhook::new()
+            .username("Rustroid Sentinel Central")
+            .avatar_url("https://rustroid-sentinel.onrender.com/img/logo-mark.png")
+            .content("Weekly asteroid activity report")
+            .embeds(vec![embed]);
+
+        webhook.execute(&self.http, false, builder).await?;
+
+        info!(
+            total = summary.total_approaches,
+            "Sent weekly Discord report"
+        );
 
         Ok(())
     }
@@ -206,6 +347,8 @@ mod tests {
                 miss_distance_km: 100.0,
                 velocity_km_h: 100.0,
                 diameter_avg_km: 0.5,
+                torino_scale: None,
+                palermo_scale: None,
             })
             .await;
 

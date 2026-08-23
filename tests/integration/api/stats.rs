@@ -37,11 +37,12 @@ async fn test_stats_endpoint_returns_asteroid_counts() -> Result<()> {
             max_hazard_subscribers: 100,
             internal_event_rate_limit_requests: 30,
         },
-        "1.0.0".to_string(),
+        "2.0.0".to_string(),
         None,
         None,
         rustroid_sentinel::events::channel(),
         "test-token".into(),
+        tokio::sync::watch::channel(false).1,
     );
 
     let app = api_router().with_state(app_state);
@@ -83,11 +84,12 @@ async fn test_stats_endpoint_empty_database() -> Result<()> {
             max_hazard_subscribers: 100,
             internal_event_rate_limit_requests: 30,
         },
-        "1.0.0".to_string(),
+        "2.0.0".to_string(),
         None,
         None,
         rustroid_sentinel::events::channel(),
         "test-token".into(),
+        tokio::sync::watch::channel(false).1,
     );
 
     let app = api_router().with_state(app_state);

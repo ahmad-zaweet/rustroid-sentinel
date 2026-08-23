@@ -50,6 +50,15 @@ pub fn api_router() -> Router<AppState> {
         .route("/approaches", get(handlers::approaches))
         .route("/etl-runs", get(handlers::etl_runs))
         .route("/events/hazards", get(handlers::hazard_events_stream))
+        .route("/asteroids", get(handlers::catalog_list))
+        .route(
+            "/asteroids/{neo_reference_id}",
+            get(handlers::catalog_detail),
+        )
+        .route(
+            "/asteroids/{neo_reference_id}/similar",
+            get(handlers::catalog_similar),
+        )
 }
 
 /// Creates the dashboard router with HTMX partial endpoints.
@@ -65,10 +74,18 @@ pub fn api_router() -> Router<AppState> {
 /// | GET    | `/etl-runs`    | [`handlers::dashboard_etl_runs`] | HTMX partial for ETL runs with pagination |
 /// | GET    | `/velocity`    | [`handlers::refresh_velocity_chart`] | HTMX partial for velocity chart refresh |
 /// | GET    | `/metrics`     | [`handlers::refresh_metrics`] | HTMX partial for system metrics refresh |
+/// | GET    | `/report`      | [`handlers::refresh_weekly_report`] | HTMX partial for the trailing-7-day weekly report |
 pub fn dashboard_router() -> Router<AppState> {
     Router::new()
         .route("/table", get(handlers::dashboard_table))
         .route("/etl-runs", get(handlers::dashboard_etl_runs))
         .route("/velocity", get(handlers::refresh_velocity_chart))
         .route("/metrics", get(handlers::refresh_metrics))
+        .route("/report", get(handlers::refresh_weekly_report))
+        .route("/catalog", get(handlers::render_catalog_page))
+        .route("/catalog/rows", get(handlers::catalog_rows))
+        .route(
+            "/catalog/{neo_reference_id}",
+            get(handlers::render_catalog_detail_page),
+        )
 }

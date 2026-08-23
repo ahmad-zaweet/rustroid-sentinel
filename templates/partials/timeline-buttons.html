@@ -1,7 +1,8 @@
 <!-- Timeline Buttons Partial -->
-<div class="timeline-btn-group">
+<div class="flex items-center gap-1.5 flex-wrap" role="group" aria-label="Velocity Period">
     <button
-        class="btn-timeline px-4 py-2{% if period == "7d" %} active{% endif %}"
+        type="button"
+        class="chip-btn{% if period == "7d" %} active{% endif %}"
         data-period="7d"
         hx-get="/dashboard/velocity?period=7d"
         hx-target="#velocity-chart-container"
@@ -11,7 +12,8 @@
         7D
     </button>
     <button
-        class="btn-timeline px-4 py-2{% if period == "30d" %} active{% endif %}"
+        type="button"
+        class="chip-btn{% if period == "30d" %} active{% endif %}"
         data-period="30d"
         hx-get="/dashboard/velocity?period=30d"
         hx-target="#velocity-chart-container"
@@ -21,7 +23,8 @@
         30D
     </button>
     <button
-        class="btn-timeline px-4 py-2{% if period == "90d" %} active{% endif %}"
+        type="button"
+        class="chip-btn{% if period == "90d" %} active{% endif %}"
         data-period="90d"
         hx-get="/dashboard/velocity?period=90d"
         hx-target="#velocity-chart-container"
@@ -31,7 +34,8 @@
         90D
     </button>
     <button
-        class="btn-timeline px-4 py-2{% if period == "1y" %} active{% endif %}"
+        type="button"
+        class="chip-btn{% if period == "1y" %} active{% endif %}"
         data-period="1y"
         hx-get="/dashboard/velocity?period=1y"
         hx-target="#velocity-chart-container"

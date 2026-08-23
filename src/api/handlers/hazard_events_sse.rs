@@ -63,28 +63,39 @@ pub async fn hazard_events_stream(State(state): State<AppState>) -> Response {
         count: state.hazard_subscriber_count.clone(),
     };
     let rx = state.events_tx.subscribe();
+    let shutdown = state.shutdown.clone();
 
-    let stream = unfold((guard, rx), |(guard, mut rx)| async move {
-        loop {
-            match rx.recv().await {
-                Ok(event) => {
-                    let sse_event = match Event::default().event("hazard").json_data(&event) {
-                        Ok(sse_event) => sse_event,
-                        Err(error) => {
-                            tracing::error!(%error, "Failed to serialize hazard event for SSE");
-                            continue;
+    let stream = unfold(
+        (guard, rx, shutdown),
+        |(guard, mut rx, mut shutdown)| async move {
+            loop {
+                tokio::select! {
+                    biased;
+                    // Ends the stream as soon as the server starts shutting down,
+                    // instead of leaving axum's graceful shutdown waiting on a
+                    // connection that would otherwise stay open indefinitely.
+                    _ = shutdown.changed() => return None,
+                    result = rx.recv() => match result {
+                        Ok(event) => {
+                            let sse_event = match Event::default().event("hazard").json_data(&event) {
+                                Ok(sse_event) => sse_event,
+                                Err(error) => {
+                                    tracing::error!(%error, "Failed to serialize hazard event for SSE");
+                                    continue;
+                                }
+                            };
+                            return Some((Ok::<_, Infallible>(sse_event), (guard, rx, shutdown)));
                         }
-                    };
-                    return Some((Ok::<_, Infallible>(sse_event), (guard, rx)));
+                        Err(broadcast::error::RecvError::Lagged(skipped)) => {
+                            let sse_event = Event::default().event("lagged").data(skipped.to_string());
+                            return Some((Ok::<_, Infallible>(sse_event), (guard, rx, shutdown)));
+                        }
+                        Err(broadcast::error::RecvError::Closed) => return None,
+                    },
                 }
-                Err(broadcast::error::RecvError::Lagged(skipped)) => {
-                    let sse_event = Event::default().event("lagged").data(skipped.to_string());
-                    return Some((Ok::<_, Infallible>(sse_event), (guard, rx)));
-                }
-                Err(broadcast::error::RecvError::Closed) => return None,
             }
-        }
-    });
+        },
+    );
 
     Sse::new(stream)
         .keep_alive(KeepAlive::new().interval(KEEP_ALIVE_INTERVAL))

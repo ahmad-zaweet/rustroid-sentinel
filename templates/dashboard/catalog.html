@@ -1,0 +1,278 @@
+{% extends "base.html" %} {% block content %}
+
+<div>
+    <!-- Editorial Catalog Lede -->
+    <div class="py-12 sm:py-16 max-w-4xl animate-rsRise">
+        <div class="font-mono text-[9.5px] tracking-[0.24em] text-[#C4B5FD] uppercase font-semibold mb-4">
+            ASTEROID CATALOG
+        </div>
+        <h1 class="m-0 font-heading text-2xl sm:text-4xl text-[#F4F1FC] tracking-tight leading-relaxed">
+            The full tracked population —
+            <span class="text-[#4FE8DC] font-bold">19,912</span>
+            objects, filterable by orbit class, spectral type, and Sentry virtual-impactor status.
+        </h1>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="pb-6 mb-4 border-b border-purple-200/10">
+        <form
+            id="catalog-filter-form"
+            hx-get="/dashboard/catalog/rows"
+            hx-trigger="change from:input, submit"
+            hx-target="#catalog-rows-body"
+            hx-swap="innerHTML"
+            hx-params="not empty"
+            class="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:flex-wrap"
+        >
+            <input type="hidden" id="sort-input" name="sort" value="{{ sort }}" />
+            <input type="hidden" id="sort-dir-input" name="sort_dir" value="{{ sort_dir }}" />
+
+            <!-- Search -->
+            <div class="w-full sm:w-auto sm:min-w-[220px]">
+                <input
+                    type="text"
+                    name="name"
+                    placeholder="Search designation or name…"
+                    class="filter-input w-full"
+                    aria-label="Search designation"
+                />
+            </div>
+
+            <span class="w-px h-5 bg-purple-200/15 mx-1 hidden sm:block"></span>
+
+            <!-- Classification -->
+            <div class="grid grid-cols-2 gap-1.5 w-full sm:flex sm:items-center sm:w-auto">
+                <input
+                    type="text"
+                    name="orbit_class"
+                    list="orbit-class-options"
+                    placeholder="Orbit class"
+                    class="filter-input w-full sm:w-32"
+                    aria-label="Orbit class"
+                />
+                <datalist id="orbit-class-options">
+                    <option value="Apollo"></option>
+                    <option value="Aten"></option>
+                    <option value="Amor"></option>
+                    <option value="Atira"></option>
+                    <option value="IEO"></option>
+                    <option value="MBA"></option>
+                    <option value="TNO"></option>
+                </datalist>
+                <input
+                    type="text"
+                    name="spectral_class"
+                    list="spectral-class-options"
+                    placeholder="Spectral class"
+                    class="filter-input w-full sm:w-32"
+                    aria-label="Spectral class"
+                />
+                <datalist id="spectral-class-options">
+                    <option value="S"></option>
+                    <option value="C"></option>
+                    <option value="X"></option>
+                    <option value="Q"></option>
+                    <option value="V"></option>
+                </datalist>
+            </div>
+
+            <span class="w-px h-5 bg-purple-200/15 mx-1 hidden sm:block"></span>
+
+            <!-- Date Range Inputs -->
+            <div class="grid grid-cols-2 gap-1.5 w-full sm:flex sm:items-center sm:w-auto">
+                <input
+                    type="date"
+                    min="2000-01-01"
+                    max="2100-12-31"
+                    name="start_date"
+                    placeholder="Start date"
+                    class="filter-input w-full sm:w-auto [color-scheme:dark]"
+                    aria-label="Start date"
+                />
+                <input
+                    type="date"
+                    min="2000-01-01"
+                    max="2100-12-31"
+                    name="end_date"
+                    placeholder="End date"
+                    class="filter-input w-full sm:w-auto [color-scheme:dark]"
+                    aria-label="End date"
+                />
+            </div>
+
+            <span class="w-px h-5 bg-purple-200/15 mx-1 hidden sm:block"></span>
+
+            <!-- Diameter Range Inputs -->
+            <div class="grid grid-cols-2 gap-1.5 w-full sm:flex sm:items-center sm:w-auto">
+                <input
+                    type="number"
+                    step="0.001"
+                    min="0"
+                    name="min_diameter_km"
+                    placeholder="Min km"
+                    class="filter-input w-full sm:w-20"
+                    aria-label="Minimum diameter (km)"
+                />
+                <input
+                    type="number"
+                    step="0.001"
+                    min="0"
+                    name="max_diameter_km"
+                    placeholder="Max km"
+                    class="filter-input w-full sm:w-20"
+                    aria-label="Maximum diameter (km)"
+                />
+            </div>
+
+            <!-- Hazard Scale Inputs -->
+            <div class="grid grid-cols-2 gap-1.5 w-full sm:flex sm:items-center sm:w-auto">
+                <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    max="10"
+                    name="min_torino_scale"
+                    placeholder="Min Torino"
+                    class="filter-input w-full sm:w-24"
+                    aria-label="Minimum Torino Scale"
+                />
+                <input
+                    type="number"
+                    step="0.01"
+                    name="min_palermo_scale"
+                    placeholder="Min Palermo"
+                    class="filter-input w-full sm:w-24"
+                    aria-label="Minimum Palermo Scale"
+                />
+            </div>
+
+            <span class="w-px h-5 bg-purple-200/15 mx-1 hidden sm:block"></span>
+
+            <!-- Flags -->
+            <div class="flex flex-wrap items-center gap-1.5 w-full sm:w-auto sm:flex-nowrap">
+                <label class="flex items-center gap-2 h-[40px] sm:h-[30px] px-3 rounded-lg font-mono text-[9.5px] tracking-wider border border-purple-200/15 bg-white/[0.02] text-[#8A83A8] hover:text-[#F4F1FC] cursor-pointer transition-colors">
+                    <input type="checkbox" name="is_potentially_hazardous" value="true" class="w-3 h-3 accent-nebula-purple rounded" />
+                    PHA ONLY
+                </label>
+                <label class="flex items-center gap-2 h-[40px] sm:h-[30px] px-3 rounded-lg font-mono text-[9.5px] tracking-wider border border-purple-200/15 bg-white/[0.02] text-[#8A83A8] hover:text-[#F4F1FC] cursor-pointer transition-colors">
+                    <input type="checkbox" name="is_sentry_object" value="true" class="w-3 h-3 accent-nebula-purple rounded" />
+                    SENTRY VI
+                </label>
+            </div>
+
+            <!-- Reset Button -->
+            <button
+                type="button"
+                id="catalog-reset-btn"
+                hx-get="/dashboard/catalog/rows"
+                hx-target="#catalog-rows-body"
+                hx-swap="innerHTML"
+                class="chip-btn w-full sm:w-auto px-2.5 sm:ml-auto justify-center"
+                aria-label="Reset filters"
+            >
+                RESET
+            </button>
+        </form>
+    </div>
+
+    <!-- Frameless Catalog Table -->
+    <div class="overflow-x-auto">
+        <table class="w-full text-left" role="table">
+            <thead>
+                <tr id="catalog-header-row" class="border-b border-purple-200/10">
+                    {% include "partials/catalog-header-row.html" %}
+                </tr>
+            </thead>
+            <tbody id="catalog-rows-body" class="divide-y divide-purple-200/5">
+                {{ rows_html|safe }}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination Footer -->
+    <div class="flex items-center justify-between gap-4 pt-6 mt-2 border-t border-purple-200/10">
+        <button
+            id="catalog-prev-btn"
+            type="button"
+            disabled
+            class="chip-btn px-4 h-8 text-[10px] disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+            PREV
+        </button>
+        <button
+            id="catalog-next-btn"
+            type="button"
+            {% match next_cursor %}
+            {% when Some with (c) %}
+            data-cursor="{{ c }}"
+            {% when None %}
+            disabled
+            data-cursor=""
+            {% endmatch %}
+            class="btn-action-teal h-8 px-4 text-[10px] disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:transform-none"
+        >
+            NEXT
+        </button>
+    </div>
+</div>
+
+<script>
+    (function () {
+        const form = document.getElementById("catalog-filter-form");
+        const prevBtn = document.getElementById("catalog-prev-btn");
+
+        let cursorStack = [];
+        let currentCursor = null;
+
+        function resetPagination() {
+            cursorStack = [];
+            currentCursor = null;
+            prevBtn.disabled = true;
+        }
+
+        function fetchPage(cursor) {
+            htmx.ajax("GET", "/dashboard/catalog/rows", {
+                source: form,
+                target: "#catalog-rows-body",
+                swap: "innerHTML",
+                values: cursor ? { cursor: cursor } : {},
+            });
+        }
+
+        document.addEventListener("click", function (event) {
+            const nextBtn = event.target.closest("#catalog-next-btn");
+            if (nextBtn) {
+                const cursor = nextBtn.dataset.cursor;
+                if (!cursor) return;
+                cursorStack.push(currentCursor);
+                currentCursor = cursor;
+                prevBtn.disabled = false;
+                fetchPage(currentCursor);
+                return;
+            }
+
+            const sortBtn = event.target.closest(".catalog-sort-btn");
+            if (sortBtn) {
+                resetPagination();
+                return;
+            }
+
+            const resetBtn = event.target.closest("#catalog-reset-btn");
+            if (resetBtn) {
+                resetPagination();
+                form.reset();
+                return;
+            }
+        });
+
+        prevBtn.addEventListener("click", function () {
+            if (cursorStack.length === 0) return;
+            currentCursor = cursorStack.pop();
+            prevBtn.disabled = cursorStack.length === 0;
+            fetchPage(currentCursor);
+        });
+
+        form.addEventListener("change", resetPagination);
+    })();
+</script>
+{% endblock %}

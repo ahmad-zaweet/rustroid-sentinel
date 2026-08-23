@@ -1,0 +1,16 @@
+weekly_report:
+  stage: run-weekly-report
+  image:
+    name: $CI_REGISTRY_IMAGE:latest
+    entrypoint: [""]
+
+  script:
+    - set -e
+    - echo "Sending weekly hazard report..."
+    - rustroid-sentinel report
+    - echo "Weekly report sent"
+
+  resource_group: weekly-report
+
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $PIPELINE_SCHEDULE_TYPE == "weekly-report"

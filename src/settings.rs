@@ -19,6 +19,8 @@
 //! | `etl` | ETL process settings | `fetch_interval_hours`, `batch_size` |
 //! | `server` | HTTP server settings | `rate_limit` |
 //! | `prometheus` | Metrics configuration | `url`, `query_url`, `interval` |
+//! | `jpl_sentry` | JPL Sentry impact-monitoring client | `base_url`, `request_delay_ms`, `stale_days` |
+//! | `jpl_sbdb` | JPL Small-Body Database (orbital elements) client | `base_url`, `request_delay_ms`, `stale_days` |
 //!
 //! ## Example Configuration
 //!
@@ -73,6 +75,12 @@ pub struct RustroidSentinelConfig {
     pub prometheus: Option<PrometheusConfig>,
     /// Configuration for Grafana Cloud Prometheus querying (dashboard metrics).
     pub grafana_cloud_prometheus: Option<GrafanaCloudPrometheusConfig>,
+    /// Configuration for the JPL Sentry impact-monitoring API client.
+    #[serde(default)]
+    pub jpl_sentry: JplSentryConfig,
+    /// Configuration for the JPL Small-Body Database (orbital elements) client.
+    #[serde(default)]
+    pub jpl_sbdb: JplSbdbConfig,
 }
 
 fn default_version() -> String {
@@ -168,6 +176,86 @@ impl std::fmt::Debug for NasaConfig {
             .field("max_concurrent_requests", &self.max_concurrent_requests)
             .finish()
     }
+}
+
+/// Configuration for the client that interacts with JPL's Sentry impact-monitoring
+/// API (`https://ssd-api.jpl.nasa.gov/sentry.api`). Unlike NeoWs, this API is
+/// public and needs no key; `request_delay_ms` is a self-imposed courtesy pause
+/// between lookups, since the API exposes no rate-limit headers to react to.
+#[derive(Debug, Deserialize, Clone)]
+pub struct JplSentryConfig {
+    /// The base URL for the Sentry API.
+    #[serde(default = "default_jpl_sentry_base_url")]
+    pub base_url: String,
+    /// Delay in milliseconds between successive per-asteroid lookups.
+    #[serde(default = "default_jpl_sentry_request_delay_ms")]
+    pub request_delay_ms: u64,
+    /// How many days a `sentry_checked_at` stamp is considered fresh before
+    /// the `sentry` CLI command re-checks that asteroid.
+    #[serde(default = "default_jpl_sentry_stale_days")]
+    pub stale_days: u64,
+}
+
+impl Default for JplSentryConfig {
+    fn default() -> Self {
+        Self {
+            base_url: default_jpl_sentry_base_url(),
+            request_delay_ms: default_jpl_sentry_request_delay_ms(),
+            stale_days: default_jpl_sentry_stale_days(),
+        }
+    }
+}
+
+fn default_jpl_sentry_base_url() -> String {
+    "https://ssd-api.jpl.nasa.gov/sentry.api".to_string()
+}
+
+fn default_jpl_sentry_request_delay_ms() -> u64 {
+    1000
+}
+
+fn default_jpl_sentry_stale_days() -> u64 {
+    30
+}
+
+/// Configuration for the client that interacts with JPL's Small-Body Database
+/// API (`https://ssd-api.jpl.nasa.gov/sbdb.api`), used to fetch orbital
+/// elements. Like Sentry, it's public and needs no key; `request_delay_ms` is
+/// a self-imposed courtesy pause between lookups.
+#[derive(Debug, Deserialize, Clone)]
+pub struct JplSbdbConfig {
+    /// The base URL for the SBDB API.
+    #[serde(default = "default_jpl_sbdb_base_url")]
+    pub base_url: String,
+    /// Delay in milliseconds between successive per-asteroid lookups.
+    #[serde(default = "default_jpl_sbdb_request_delay_ms")]
+    pub request_delay_ms: u64,
+    /// How many days an `orbit_checked_at` stamp is considered fresh before
+    /// the `orbits` CLI command re-checks that asteroid.
+    #[serde(default = "default_jpl_sbdb_stale_days")]
+    pub stale_days: u64,
+}
+
+impl Default for JplSbdbConfig {
+    fn default() -> Self {
+        Self {
+            base_url: default_jpl_sbdb_base_url(),
+            request_delay_ms: default_jpl_sbdb_request_delay_ms(),
+            stale_days: default_jpl_sbdb_stale_days(),
+        }
+    }
+}
+
+fn default_jpl_sbdb_base_url() -> String {
+    "https://ssd-api.jpl.nasa.gov/sbdb.api".to_string()
+}
+
+fn default_jpl_sbdb_request_delay_ms() -> u64 {
+    1000
+}
+
+fn default_jpl_sbdb_stale_days() -> u64 {
+    90
 }
 
 /// Configuration for sending notifications via a Discord webhook.

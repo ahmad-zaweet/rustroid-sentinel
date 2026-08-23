@@ -6,7 +6,9 @@ use crate::events::HazardEvent;
 use crate::models::HazardClassification;
 use crate::models::approach::Approach;
 use crate::models::asteroid::Asteroid;
+use crate::nasa::jpl_sbdb::responses::SbdbOrbitSummary;
 use chrono::{DateTime, NaiveDate, Utc};
+use futures_util::Stream;
 use sqlx::PgPool;
 use std::collections::HashMap;
 use tracing::{debug, warn};
@@ -29,6 +31,10 @@ pub struct UpsertStats {
     /// publishing to the hazard event stream. Empty for duplicate rows that
     /// `ON CONFLICT ... DO NOTHING` skipped.
     pub new_hazard_events: Vec<HazardEvent>,
+    /// Ids of asteroids that were newly inserted (not merely updated) by
+    /// this batch, so callers can scope follow-up enrichment (Sentry scale,
+    /// orbital elements) to just-arrived rows instead of the whole catalog.
+    pub newly_inserted_asteroid_ids: Vec<Uuid>,
 }
 
 impl std::fmt::Display for UpsertStats {
@@ -391,7 +397,7 @@ impl AsteroidRepository {
 
         let mut tx = pool.begin().await?;
 
-        let asteroids_result = sqlx::query(
+        let asteroid_rows: Vec<(Uuid, bool)> = sqlx::query_as(
             r#"
             INSERT INTO asteroids (
                 id, neo_reference_id, name, absolute_magnitude,
@@ -413,6 +419,7 @@ impl AsteroidRepository {
                 is_sentry_object = EXCLUDED.is_sentry_object,
                 nasa_jpl_url = EXCLUDED.nasa_jpl_url,
                 updated_at = EXCLUDED.updated_at
+            RETURNING id, (xmax = 0) AS inserted
             "#,
         )
         .bind(&ids)
@@ -426,7 +433,7 @@ impl AsteroidRepository {
         .bind(&jpl_urls)
         .bind(&created_ats)
         .bind(&updated_ats)
-        .execute(&mut *tx)
+        .fetch_all(&mut *tx)
         .await?;
 
         let inserted_approach_ids: Vec<Uuid> = sqlx::query_scalar(
@@ -463,7 +470,12 @@ impl AsteroidRepository {
 
         tx.commit().await?;
 
-        let asteroids_inserted = asteroids_result.rows_affected();
+        let newly_inserted_asteroid_ids: Vec<Uuid> = asteroid_rows
+            .iter()
+            .filter(|(_, inserted)| *inserted)
+            .map(|(id, _)| *id)
+            .collect();
+        let asteroids_inserted = newly_inserted_asteroid_ids.len() as u64;
         let asteroids_updated = ids.len() as u64 - asteroids_inserted;
         let approaches_inserted = inserted_approach_ids.len() as u64;
 
@@ -491,6 +503,279 @@ impl AsteroidRepository {
             approaches_inserted,
             approaches_skipped: a_ids.len() as u64 - approaches_inserted,
             new_hazard_events,
+            newly_inserted_asteroid_ids,
         })
+    }
+
+    /// Returns `(id, neo_reference_id)` for asteroids the `sentry` CLI
+    /// command should (re-)check against the JPL Sentry API.
+    ///
+    /// Bounded to `is_sentry_object` rows: NeoWs already tells us, per
+    /// object, whether it currently appears on JPL's Sentry Risk List — that
+    /// flag *is* current-virtual-impactor membership, so there's no reason
+    /// to also sweep the much larger `is_potentially_hazardous` set (PHA
+    /// status doesn't imply VI status, and the vast majority of PHAs will
+    /// never be on Sentry). A row qualifies if it's never been checked, or
+    /// was last checked before `stale_before` (the caller computes this from
+    /// `JplSentryConfig::stale_days`, or passes `Utc::now()` to force a full
+    /// recheck of every candidate).
+    pub async fn asteroids_needing_sentry_check(
+        pool: &PgPool,
+        stale_before: DateTime<Utc>,
+    ) -> Result<Vec<(Uuid, String)>, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            SELECT id, neo_reference_id FROM asteroids
+            WHERE is_sentry_object
+              AND (sentry_checked_at IS NULL OR sentry_checked_at < $1)
+            ORDER BY neo_reference_id
+            "#,
+        )
+        .bind(stale_before)
+        .fetch_all(pool)
+        .await
+    }
+
+    /// Returns `(id, neo_reference_id)` for exactly the given asteroid ids
+    /// that are `is_sentry_object`, with no staleness gate — used to scope
+    /// Sentry enrichment to asteroids newly inserted by this pipeline run
+    /// (which have no `sentry_checked_at` yet, so every match is eligible by
+    /// construction).
+    pub async fn sentry_candidates_for_ids(
+        pool: &PgPool,
+        ids: &[Uuid],
+    ) -> Result<Vec<(Uuid, String)>, sqlx::Error> {
+        if ids.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        sqlx::query_as(
+            r#"
+            SELECT id, neo_reference_id FROM asteroids
+            WHERE is_sentry_object AND id = ANY($1::uuid[])
+            ORDER BY neo_reference_id
+            "#,
+        )
+        .bind(ids)
+        .fetch_all(pool)
+        .await
+    }
+
+    /// Bulk-updates `torino_scale`, `palermo_scale`, and `sentry_checked_at`
+    /// for a batch of asteroids, without touching any other column. `None`
+    /// scale values are written as `NULL` (the object isn't a current
+    /// Sentry virtual impactor); `sentry_checked_at` is always stamped so a
+    /// permanently-clear asteroid isn't re-queried on every run.
+    ///
+    /// Returns the number of rows updated.
+    pub async fn update_sentry_scales(
+        pool: &PgPool,
+        updates: &[(Uuid, Option<i16>, Option<f64>)],
+    ) -> Result<u64, sqlx::Error> {
+        if updates.is_empty() {
+            return Ok(0);
+        }
+
+        let ids: Vec<Uuid> = updates.iter().map(|(id, _, _)| *id).collect();
+        let torino_scales: Vec<Option<i16>> = updates.iter().map(|(_, t, _)| *t).collect();
+        let palermo_scales: Vec<Option<f64>> = updates.iter().map(|(_, _, p)| *p).collect();
+        let checked_at = Utc::now();
+
+        let result = sqlx::query(
+            r#"
+            UPDATE asteroids AS a
+            SET torino_scale = src.torino_scale,
+                palermo_scale = src.palermo_scale,
+                sentry_checked_at = $4
+            FROM (
+                SELECT * FROM UNNEST($1::uuid[], $2::int2[], $3::float8[])
+                    AS t(id, torino_scale, palermo_scale)
+            ) AS src
+            WHERE a.id = src.id
+            "#,
+        )
+        .bind(&ids)
+        .bind(&torino_scales)
+        .bind(&palermo_scales)
+        .bind(checked_at)
+        .execute(pool)
+        .await?;
+
+        Ok(result.rows_affected())
+    }
+
+    /// Counts asteroids the `orbits` CLI command should (re-)fetch orbital
+    /// elements for, without materializing the rows — used only to report
+    /// "checked N of TOTAL" progress against
+    /// [`stream_asteroids_needing_orbit_check`]'s streamed results.
+    ///
+    /// Same eligibility rule as the stream: no `asteroid_orbits` row yet, or
+    /// `orbit_checked_at` older than `stale_before`.
+    pub async fn count_asteroids_needing_orbit_check(
+        pool: &PgPool,
+        stale_before: DateTime<Utc>,
+    ) -> Result<i64, sqlx::Error> {
+        sqlx::query_scalar(
+            r#"
+            SELECT COUNT(*) FROM (
+                (SELECT a.id FROM asteroids a
+                    WHERE NOT EXISTS (SELECT 1 FROM asteroid_orbits o WHERE o.asteroid_id = a.id))
+                UNION ALL
+                (SELECT a.id FROM asteroids a
+                    JOIN asteroid_orbits o ON o.asteroid_id = a.id
+                    WHERE o.orbit_checked_at < $1)
+            ) AS candidates
+            "#,
+        )
+        .bind(stale_before)
+        .fetch_one(pool)
+        .await
+    }
+
+    /// Streams `(id, neo_reference_id)` for asteroids the `orbits` CLI
+    /// command should (re-)fetch orbital elements for from JPL's SBDB API,
+    /// instead of collecting the full candidate set into memory up front —
+    /// the candidate count scales with the whole catalog (every asteroid is
+    /// eligible, not just a hazard-flagged subset), so this keeps memory use
+    /// independent of catalog size and lets the caller start SBDB lookups as
+    /// rows arrive rather than waiting on the full result set.
+    ///
+    /// Unlike the Sentry check, this sweeps every asteroid, not just
+    /// `is_sentry_object` rows — orbital elements are catalog metadata, not
+    /// tied to impact-risk status. The two eligibility branches (no orbit row
+    /// yet vs. stale orbit row) are written as a `UNION ALL` of two
+    /// independently indexable queries rather than a single `LEFT JOIN ...
+    /// WHERE x IS NULL OR y < $1`, since the OR-across-a-join form tends to
+    /// defeat the `orbit_checked_at` index and fall back to a sequential
+    /// scan. The caller computes `stale_before` from
+    /// `JplSbdbConfig::stale_days`, or passes `Utc::now()` to force a full
+    /// recheck of every candidate.
+    pub fn stream_asteroids_needing_orbit_check(
+        pool: &PgPool,
+        stale_before: DateTime<Utc>,
+    ) -> impl Stream<Item = Result<(Uuid, String), sqlx::Error>> + '_ {
+        sqlx::query_as(
+            r#"
+            (SELECT a.id, a.neo_reference_id FROM asteroids a
+                WHERE NOT EXISTS (SELECT 1 FROM asteroid_orbits o WHERE o.asteroid_id = a.id))
+            UNION ALL
+            (SELECT a.id, a.neo_reference_id FROM asteroids a
+                JOIN asteroid_orbits o ON o.asteroid_id = a.id
+                WHERE o.orbit_checked_at < $1)
+            ORDER BY neo_reference_id
+            "#,
+        )
+        .bind(stale_before)
+        .fetch(pool)
+    }
+
+    /// Returns `(id, neo_reference_id)` for exactly the given asteroid ids,
+    /// with no staleness gate — used to scope orbit-elements enrichment to
+    /// asteroids newly inserted by this pipeline run (which have no
+    /// `orbit_checked_at` yet, so every id is eligible by construction).
+    pub async fn orbit_candidates_for_ids(
+        pool: &PgPool,
+        ids: &[Uuid],
+    ) -> Result<Vec<(Uuid, String)>, sqlx::Error> {
+        if ids.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        sqlx::query_as(
+            r#"
+            SELECT id, neo_reference_id FROM asteroids
+            WHERE id = ANY($1::uuid[])
+            ORDER BY neo_reference_id
+            "#,
+        )
+        .bind(ids)
+        .fetch_all(pool)
+        .await
+    }
+
+    /// Bulk-upserts orbital elements into `asteroid_orbits` for a batch of
+    /// asteroids, stamping `orbit_checked_at` on every row (including
+    /// no-match rows) so a permanently orbit-less asteroid isn't re-queried
+    /// on every run.
+    ///
+    /// Returns the number of rows affected.
+    pub async fn upsert_asteroid_orbits(
+        pool: &PgPool,
+        updates: &[(Uuid, SbdbOrbitSummary)],
+    ) -> Result<u64, sqlx::Error> {
+        if updates.is_empty() {
+            return Ok(0);
+        }
+
+        let ids: Vec<Uuid> = updates.iter().map(|(id, _)| *id).collect();
+        let eccentricity: Vec<Option<f64>> = updates.iter().map(|(_, s)| s.eccentricity).collect();
+        let semi_major_axis_au: Vec<Option<f64>> =
+            updates.iter().map(|(_, s)| s.semi_major_axis_au).collect();
+        let inclination_deg: Vec<Option<f64>> =
+            updates.iter().map(|(_, s)| s.inclination_deg).collect();
+        let ascending_node_deg: Vec<Option<f64>> =
+            updates.iter().map(|(_, s)| s.ascending_node_deg).collect();
+        let perihelion_arg_deg: Vec<Option<f64>> =
+            updates.iter().map(|(_, s)| s.perihelion_arg_deg).collect();
+        let mean_anomaly_deg: Vec<Option<f64>> =
+            updates.iter().map(|(_, s)| s.mean_anomaly_deg).collect();
+        let orbital_period_days: Vec<Option<f64>> =
+            updates.iter().map(|(_, s)| s.orbital_period_days).collect();
+        let orbit_class: Vec<Option<String>> =
+            updates.iter().map(|(_, s)| s.orbit_class.clone()).collect();
+        let spectral_class: Vec<Option<String>> = updates
+            .iter()
+            .map(|(_, s)| s.spectral_class.clone())
+            .collect();
+        let albedo: Vec<Option<f64>> = updates.iter().map(|(_, s)| s.albedo).collect();
+        let checked_at = Utc::now();
+
+        let result = sqlx::query(
+            r#"
+            INSERT INTO asteroid_orbits (
+                asteroid_id, eccentricity, semi_major_axis_au, inclination_deg,
+                ascending_node_deg, perihelion_arg_deg, mean_anomaly_deg,
+                orbital_period_days, orbit_class, spectral_class, albedo,
+                orbit_checked_at
+            )
+            SELECT t.*, $12::timestamptz FROM UNNEST(
+                $1::uuid[], $2::float8[], $3::float8[], $4::float8[],
+                $5::float8[], $6::float8[], $7::float8[],
+                $8::float8[], $9::text[], $10::text[], $11::float8[]
+            ) AS t(
+                asteroid_id, eccentricity, semi_major_axis_au, inclination_deg,
+                ascending_node_deg, perihelion_arg_deg, mean_anomaly_deg,
+                orbital_period_days, orbit_class, spectral_class, albedo
+            )
+            ON CONFLICT (asteroid_id) DO UPDATE SET
+                eccentricity = EXCLUDED.eccentricity,
+                semi_major_axis_au = EXCLUDED.semi_major_axis_au,
+                inclination_deg = EXCLUDED.inclination_deg,
+                ascending_node_deg = EXCLUDED.ascending_node_deg,
+                perihelion_arg_deg = EXCLUDED.perihelion_arg_deg,
+                mean_anomaly_deg = EXCLUDED.mean_anomaly_deg,
+                orbital_period_days = EXCLUDED.orbital_period_days,
+                orbit_class = EXCLUDED.orbit_class,
+                spectral_class = EXCLUDED.spectral_class,
+                albedo = EXCLUDED.albedo,
+                orbit_checked_at = EXCLUDED.orbit_checked_at
+            "#,
+        )
+        .bind(&ids)
+        .bind(&eccentricity)
+        .bind(&semi_major_axis_au)
+        .bind(&inclination_deg)
+        .bind(&ascending_node_deg)
+        .bind(&perihelion_arg_deg)
+        .bind(&mean_anomaly_deg)
+        .bind(&orbital_period_days)
+        .bind(&orbit_class)
+        .bind(&spectral_class)
+        .bind(&albedo)
+        .bind(checked_at)
+        .execute(pool)
+        .await?;
+
+        Ok(result.rows_affected())
     }
 }

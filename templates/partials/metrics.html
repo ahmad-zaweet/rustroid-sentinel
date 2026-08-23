@@ -1,69 +1,23 @@
-<!-- Metrics Cards — SSR Partial -->
-<div class="grid grid-cols-2 md:grid-cols-5 gap-3">
-
-    <div class="metric-card group text-center p-4 rounded-xl bg-white/[0.03] backdrop-blur-sm border border-white/[0.05] hover:border-nebula-cyan/18 transition-all duration-280">
-        <div class="flex items-center justify-center mb-2">
-            <i data-lucide="activity" class="w-3.5 h-3.5 text-nebula-cyan opacity-55"></i>
-        </div>
-        <div
-            class="text-xl font-heading font-bold text-nebula-cyan group-hover:text-nebula-blue transition-colors duration-250"
-            id="metric-rps"
-        >{{ requests_per_second }}</div>
-        <div class="text-[10px] font-mono text-text-muted mt-1.5 uppercase tracking-wider">
-            Req / sec
-        </div>
+<!-- Metrics Row — Inline Editorial Partial -->
+<div class="flex items-center gap-6 sm:gap-9 flex-wrap">
+    <div class="flex items-baseline gap-2">
+        <span class="font-mono text-[9px] tracking-[0.18em] text-[#8A83A8] uppercase">REQ/S</span>
+        <span class="font-mono text-xs sm:text-[12.5px] text-[#4FE8DC] font-semibold" id="metric-rps">{{ requests_per_second }}</span>
     </div>
-
-    <div class="metric-card group text-center p-4 rounded-xl bg-white/[0.03] backdrop-blur-sm border border-white/[0.05] hover:border-hazard-high/18 transition-all duration-280">
-        <div class="flex items-center justify-center mb-2">
-            <i data-lucide="alert-circle" class="w-3.5 h-3.5 text-hazard-high opacity-55"></i>
-        </div>
-        <div
-            class="text-xl font-heading font-bold {{ error_rate_class }} group-hover:opacity-90 transition-opacity duration-250"
-            id="metric-error-rate"
-        >{{ error_rate_percent }}</div>
-        <div class="text-[10px] font-mono text-text-muted mt-1.5 uppercase tracking-wider">
-            Error Rate
-        </div>
+    <div class="flex items-baseline gap-2">
+        <span class="font-mono text-[9px] tracking-[0.18em] text-[#8A83A8] uppercase">ERRORS</span>
+        <span class="font-mono text-xs sm:text-[12.5px] {{ error_rate_class }} font-semibold" id="metric-error-rate">{{ error_rate_percent }}</span>
     </div>
-
-    <div class="metric-card group text-center p-4 rounded-xl bg-white/[0.03] backdrop-blur-sm border border-white/[0.05] hover:border-nebula-blue/18 transition-all duration-280">
-        <div class="flex items-center justify-center mb-2">
-            <i data-lucide="timer" class="w-3.5 h-3.5 text-nebula-blue opacity-55"></i>
-        </div>
-        <div
-            class="text-xl font-heading font-bold text-nebula-blue group-hover:text-nebula-cyan transition-colors duration-250"
-            id="metric-latency"
-        >{{ avg_response_time_ms }}</div>
-        <div class="text-[10px] font-mono text-text-muted mt-1.5 uppercase tracking-wider">
-            Avg Latency
-        </div>
+    <div class="flex items-baseline gap-2">
+        <span class="font-mono text-[9px] tracking-[0.18em] text-[#8A83A8] uppercase">LATENCY</span>
+        <span class="font-mono text-xs sm:text-[12.5px] text-[#C3BEDA] font-semibold" id="metric-latency">{{ avg_response_time_ms }}</span>
     </div>
-
-    <div class="metric-card group text-center p-4 rounded-xl bg-white/[0.03] backdrop-blur-sm border border-white/[0.05] hover:border-nebula-purple/18 transition-all duration-280">
-        <div class="flex items-center justify-center mb-2">
-            <i data-lucide="database" class="w-3.5 h-3.5 text-nebula-purple opacity-55"></i>
-        </div>
-        <div
-            class="text-xl font-heading font-bold text-nebula-purple group-hover:text-nebula-blue transition-colors duration-250"
-            id="metric-db-qps"
-        >{{ db_queries_per_second }}</div>
-        <div class="text-[10px] font-mono text-text-muted mt-1.5 uppercase tracking-wider">
-            DB / sec
-        </div>
+    <div class="flex items-baseline gap-2">
+        <span class="font-mono text-[9px] tracking-[0.18em] text-[#8A83A8] uppercase">DB/S</span>
+        <span class="font-mono text-xs sm:text-[12.5px] text-[#C3BEDA] font-semibold" id="metric-db-qps">{{ db_queries_per_second }}</span>
     </div>
-
-    <div class="metric-card group text-center p-4 rounded-xl bg-white/[0.03] backdrop-blur-sm border border-white/[0.05] hover:border-hazard-high/18 transition-all duration-280">
-        <div class="flex items-center justify-center mb-2">
-            <i data-lucide="hard-drive" class="w-3.5 h-3.5 text-hazard-high opacity-55"></i>
-        </div>
-        <div
-            class="text-xl font-heading font-bold {{ storage_class }} group-hover:opacity-90 transition-opacity duration-250"
-            id="metric-storage"
-        >{{ storage_used_percent }}</div>
-        <div class="text-[10px] font-mono text-text-muted mt-1.5 uppercase tracking-wider">
-            Storage Used
-        </div>
+    <div class="flex items-baseline gap-2">
+        <span class="font-mono text-[9px] tracking-[0.18em] text-[#8A83A8] uppercase">STORAGE</span>
+        <span class="font-mono text-xs sm:text-[12.5px] {{ storage_class }} font-semibold" id="metric-storage">{{ storage_used_percent }}</span>
     </div>
-
 </div>

@@ -6,12 +6,9 @@ etl_pipeline:
 
   script:
     - set -e
-    - echo "Starting ETL Pipeline..."
-    - rustroid-sentinel extract
-    - rustroid-sentinel transform
-    - rustroid-sentinel load
-    - rustroid-sentinel alert
-    - echo "ETL Pipeline completed successfully"
+    - echo "Starting Rustroid Sentinel pipeline..."
+    - rustroid-sentinel pipeline --skip-report
+    - echo "Pipeline completed successfully"
 
   resource_group: etl-pipeline
 

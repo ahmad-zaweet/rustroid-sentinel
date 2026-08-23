@@ -7,6 +7,8 @@
 use chrono::Utc;
 use tracing::{debug, info, warn};
 
+pub mod embedding;
+
 use crate::models::HazardClassification;
 use crate::models::approach::Approach;
 use crate::models::asteroid::Asteroid;
@@ -42,6 +44,9 @@ pub fn transform_neo_feed(feed: &NeoFeed) -> Vec<(Asteroid, Vec<Approach>)> {
                 is_potentially_hazardous: neo.is_potentially_hazardous_asteroid,
                 is_sentry_object: neo.is_sentry_object,
                 nasa_jpl_url: neo.nasa_jpl_url.clone(),
+                torino_scale: None,
+                palermo_scale: None,
+                sentry_checked_at: None,
                 created_at: now,
                 updated_at: now,
             };

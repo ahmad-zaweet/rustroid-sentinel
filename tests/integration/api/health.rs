@@ -23,11 +23,12 @@ async fn test_health_endpoint_returns_200() -> Result<()> {
             max_hazard_subscribers: 100,
             internal_event_rate_limit_requests: 30,
         },
-        "1.0.0".to_string(),
+        "2.0.0".to_string(),
         None,
         None,
         rustroid_sentinel::events::channel(),
         "test-token".into(),
+        tokio::sync::watch::channel(false).1,
     );
 
     let app = api_router().with_state(app_state);
@@ -51,7 +52,7 @@ async fn test_health_endpoint_returns_200() -> Result<()> {
     let body: serde_json::Value = serde_json::from_slice(&body_bytes)?;
 
     assert_eq!(body["status"], "ok");
-    assert_eq!(body["version"], "1.0.0");
+    assert_eq!(body["version"], "2.0.0");
     assert_eq!(body["database"], "up");
 
     Ok(())

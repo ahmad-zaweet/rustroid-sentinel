@@ -1,210 +1,168 @@
 {% extends "base.html" %} {% block content %}
 
-<!-- Mission Overview Strip -->
-<div class="mission-strip flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fade-slide-up delay-0">
-    <div class="flex items-start sm:items-center gap-3">
-            <i data-lucide="radar" class="w-3.5 h-3.5 text-nebula-cyan"></i>
-        <p class="text-sm text-text-secondary font-body leading-relaxed flex flex-wrap items-center gap-x-1.5 gap-y-1">
-            <span>Monitoring</span>
-            <span class="font-heading font-bold text-text-primary">{{ total_asteroids }}</span>
-            <span>near-Earth objects</span>
-            <span class="text-text-muted hidden sm:inline">·</span>
-            <span class="font-heading font-bold text-text-primary">{{ total_approaches }}</span>
-            <span>close approaches recorded</span>
-            <span class="text-text-muted hidden sm:inline">·</span>
-            <span class="font-heading font-bold text-hazard-critical">{{ hazardous_count }}</span>
-            <span>potentially hazardous</span>
+<div>
+    <!-- ─────── EDITORIAL LEDE ─────── -->
+    <div class="py-12 sm:py-20 max-w-5xl animate-rsRise">
+        <!-- Section tag + sweep rule -->
+        <div class="flex items-center gap-3.5 mb-7">
+            <span class="font-mono text-[9.5px] tracking-[0.24em] text-[#4FE8DC] font-semibold uppercase">MISSION OVERVIEW</span>
+            <span class="flex-1 max-w-[220px] h-px bg-gradient-to-r from-[#4FE8DC]/45 to-transparent relative overflow-hidden">
+                <span class="absolute inset-0 w-1/3 bg-gradient-to-r from-transparent via-[#4FE8DC] to-transparent animate-rsSweep"></span>
+            </span>
+            <span class="font-mono text-[9.5px] text-[#8A83A8] uppercase tracking-wider" id="utc-clock">
+                22 AUG 2026 · LIVE TELEMETRY
+            </span>
+        </div>
+
+        <!-- The Numbers ARE the Sentence -->
+        <p class="m-0 font-body text-2xl sm:text-4xl text-[#928CAE] tracking-tight leading-relaxed">
+            Tracking
+            <span class="font-heading font-bold text-[#F4F1FC]" id="total-asteroids">{{ total_asteroids }}</span>
+            near-Earth objects across
+            <span class="font-heading font-bold text-[#F4F1FC]" id="total-approaches">{{ total_approaches }}</span>
+            recorded close approaches, of which
+            <span class="font-heading font-bold bg-gradient-to-r from-[#EF4444] to-[#F97316] bg-clip-text text-transparent" id="hazardous-count">{{ hazardous_count }}</span>
+            are classified potentially hazardous.
         </p>
-    </div>
-    <div class="flex items-center gap-1.5 flex-shrink-0 self-start sm:self-auto ml-10 sm:ml-0">
-        <i data-lucide="database" class="w-3 h-3 text-nebula-cyan"></i>
-        <span class="text-[10px] font-mono text-text-muted uppercase tracking-wider">NASA NeoWs</span>
-    </div>
-</div>
 
-<!-- ─── Stats Cards ─────────────────────────────── -->
-<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-
-    <!-- Total Asteroids -->
-    <div class="stat-card spotlight-card group relative bg-space-800/50 backdrop-blur-glass border border-white/[0.07] rounded-2xl p-6 hover:border-nebula-purple/22 shadow-glass hover:shadow-glow transition-all duration-400 overflow-hidden animate-fade-slide-up delay-0">
-        <div class="spotlight"></div>
-        <!-- Left accent bar -->
-        <div class="absolute inset-y-0 left-0 w-[3px] bg-gradient-to-b from-transparent via-nebula-purple to-transparent opacity-40 group-hover:opacity-100 transition-opacity duration-300 rounded-l-2xl"></div>
-        <div class="relative z-10">
-            <div class="flex items-center justify-between mb-4">
-                <span class="section-label text-nebula-purple">Tracked NEOs</span>
-                    <i data-lucide="orbit" class="w-4 h-4 text-nebula-purple"></i>
+        <!-- System Metrics Row (Inline HTMX Partial) -->
+        <div id="metrics-container" hx-get="/dashboard/metrics" hx-trigger="load" hx-swap="innerHTML" class="mt-8">
+            <div class="flex items-center gap-6 sm:gap-9 animate-pulse">
+                <div class="h-4 w-20 bg-purple-200/10 rounded"></div>
+                <div class="h-4 w-20 bg-purple-200/10 rounded"></div>
+                <div class="h-4 w-20 bg-purple-200/10 rounded"></div>
+                <div class="h-4 w-20 bg-purple-200/10 rounded"></div>
             </div>
-            <p
-                class="font-heading text-4xl xl:text-5xl font-bold bg-gradient-to-r from-nebula-purple via-nebula-blue to-nebula-cyan bg-clip-text text-transparent animate-gradient"
-                id="total-asteroids"
-            >{{ total_asteroids }}</p>
-            <p class="text-text-muted text-xs mt-3 font-body">Near-Earth objects in database</p>
         </div>
     </div>
 
-    <!-- Total Approaches -->
-    <div class="stat-card spotlight-card group relative bg-space-800/50 backdrop-blur-glass border border-white/[0.07] rounded-2xl p-6 hover:border-nebula-blue/22 shadow-glass hover:shadow-glow-blue transition-all duration-400 overflow-hidden animate-fade-slide-up delay-100">
-        <div class="spotlight"></div>
-        <div class="absolute inset-y-0 left-0 w-[3px] bg-gradient-to-b from-transparent via-nebula-blue to-transparent opacity-40 group-hover:opacity-100 transition-opacity duration-300 rounded-l-2xl"></div>
-        <div class="relative z-10">
-            <div class="flex items-center justify-between mb-4">
-                <span class="section-label text-nebula-blue">Flyby Events</span>
-                    <i data-lucide="route" class="w-4 h-4 text-nebula-blue"></i>
+    <!-- ─────── ACTIVE HAZARD CARD (THE SINGLE CARD ON THE PAGE) ─────── -->
+    {% if let Some(top_hazard) = approaches.first() %}
+    <div id="active-hazard-box" class="active-hazard-wrap">
+        <div class="active-hazard-conic" aria-hidden="true"></div>
+        <div class="active-hazard-inner">
+            <!-- Mouse Spotlight Follower -->
+            <div id="hazard-spotlight" class="active-hazard-spotlight" aria-hidden="true"></div>
+
+            <!-- Pulsing Alert Glyph -->
+            <div class="relative w-11 h-11 flex-shrink-0 rounded-xl bg-hazard-critical/10 border border-hazard-critical/30 flex items-center justify-center">
+                <span class="w-2.5 h-2.5 rounded-full bg-hazard-critical shadow-[0_0_16px_#EF4444] animate-rsPulse"></span>
             </div>
-            <p
-                class="font-heading text-4xl xl:text-5xl font-bold bg-gradient-to-r from-nebula-blue to-nebula-cyan bg-clip-text text-transparent animate-gradient"
-                id="total-approaches"
-            >{{ total_approaches }}</p>
-            <p class="text-text-muted text-xs mt-3 font-body">Close approach records logged</p>
+
+            <!-- Event Details -->
+            <div class="relative flex-1 min-w-0 w-full sm:w-auto">
+                <div class="flex items-center gap-3">
+                    <span class="font-mono text-[9px] tracking-[0.22em] text-hazard-critical uppercase font-semibold">ACTIVE HAZARD EVENT</span>
+                    <span class="font-mono text-[9px] text-[#7B7499]">SSE LIVE · NEOWS FEED</span>
+                </div>
+                <div class="mt-2 font-heading font-semibold text-lg sm:text-xl text-[#F4F1FC] truncate">
+                    {{ top_hazard.asteroid_name }} approaches Earth on {{ top_hazard.close_approach_date.format("%b %e, %Y") }}
+                </div>
+            </div>
+
+            <!-- Approach Metrics -->
+            <div class="relative flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-6 lg:gap-8 flex-shrink-0 mt-3 sm:mt-0">
+                <div class="flex flex-col gap-0.5 sm:block">
+                    <div class="font-mono text-[8.5px] tracking-[0.18em] text-[#7B7499] uppercase">MISS DIST.</div>
+                    <div class="font-mono text-sm sm:text-base text-[#4FE8DC] sm:mt-1 font-semibold">
+                        {{ format!("{:.2}", top_hazard.miss_distance_km / 1000000.0) }}M km
+                    </div>
+                </div>
+                <div class="flex flex-col gap-0.5 sm:block">
+                    <div class="font-mono text-[8.5px] tracking-[0.18em] text-[#7B7499] uppercase">VELOCITY</div>
+                    <div class="font-mono text-sm sm:text-base text-[#4FE8DC] sm:mt-1 font-semibold">
+                        {{ format!("{:.0}", top_hazard.velocity_km_per_h) }} km/h
+                    </div>
+                </div>
+                <a
+                    href="/dashboard/catalog/{{ top_hazard.neo_reference_id }}"
+                    class="btn-action-critical w-full sm:w-auto text-center"
+                >
+                    INSPECT
+                </a>
+            </div>
         </div>
     </div>
+    {% endif %}
 
-    <!-- Potentially Hazardous -->
-    <div class="stat-card spotlight-card group relative bg-space-800/50 backdrop-blur-glass border border-white/[0.07] rounded-2xl p-6 hover:border-hazard-critical/18 shadow-glass hover:shadow-glow-critical transition-all duration-400 overflow-hidden animate-fade-slide-up delay-200">
-        <div class="spotlight"></div>
-        <div class="absolute inset-y-0 left-0 w-[3px] bg-gradient-to-b from-transparent via-hazard-critical to-transparent opacity-40 group-hover:opacity-100 transition-opacity duration-300 rounded-l-2xl"></div>
-        <div class="relative z-10">
-            <div class="flex items-center justify-between mb-4">
-                <span class="section-label text-hazard-critical">PHA Count</span>
-                    <i data-lucide="triangle-alert" class="w-4 h-4 text-hazard-critical animate-pulse-slow"></i>
-            </div>
-            <p
-                class="font-heading text-4xl xl:text-5xl font-bold text-hazard-critical"
-                id="hazardous-count"
-            >{{ hazardous_count }}</p>
-            <p class="text-text-muted text-xs mt-3 font-body">Potentially hazardous asteroids</p>
+    <!-- ─────── THIS WEEK SECTION ─────── -->
+    <section class="editorial-section">
+        <div>
+            <div class="editorial-label text-[#C4B5FD]">THIS WEEK</div>
+            <p class="m-0 mt-3 text-xs text-[#8A83A8] leading-relaxed">
+                Trailing 7-day rollup of close approaches and hazard breakdown.
+            </p>
         </div>
-    </div>
-</div>
+        <div id="weekly-report-container" hx-get="/dashboard/report" hx-trigger="load" hx-swap="innerHTML">
+            <div class="flex items-end gap-10 animate-pulse">
+                <div class="h-12 w-24 bg-purple-200/10 rounded"></div>
+                <div class="h-12 w-24 bg-purple-200/10 rounded"></div>
+                <div class="h-12 w-24 bg-purple-200/10 rounded"></div>
+            </div>
+        </div>
+    </section>
 
-<!-- ─── Mission Status (System Metrics) ────────── -->
-<div class="animate-fade-slide-up delay-300">
-    <div class="flex items-center gap-2 mb-3">
-        <span class="section-label text-nebula-cyan">Mission Status</span>
-    </div>
-    <div class="glass-card rounded-2xl p-5 relative overflow-hidden group">
-        <div class="absolute inset-0 bg-gradient-radial from-nebula-purple/3 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
+    <!-- ─────── TRAJECTORY SECTION ─────── -->
+    <section class="editorial-section">
+        <div>
+            <div class="editorial-label text-[#4FE8DC]">TRAJECTORY</div>
+            <p class="m-0 mt-3 text-xs text-[#8A83A8] leading-relaxed">
+                Daily mean approach velocity across the selected observation window.
+            </p>
+            <div class="mt-5" id="timeline-buttons-container">
+                {% include "partials/timeline-buttons.html" %}
+            </div>
+            <div class="mt-6 font-mono text-[10px] space-y-1 text-[#7B7499]">
+                <div>UPDATED: <span id="last-updated" class="text-[#C3BEDA] font-semibold">{{ last_updated }}</span></div>
+            </div>
+        </div>
+        <div class="relative h-64 sm:h-80 w-full">
+            <canvas id="velocityChart"></canvas>
+        </div>
+    </section>
+
+    <!-- ─────── PIPELINE SECTION ─────── -->
+    <section class="editorial-section">
+        <div>
+            <div class="editorial-label text-[#C4B5FD]">PIPELINE</div>
+            <p class="m-0 mt-3 text-xs text-[#8A83A8] leading-relaxed">
+                Recent asynchronous ingest runs against the NASA NeoWs data feed.
+            </p>
+            <div class="flex items-center gap-2 mt-4">
+                <span class="w-1.5 h-1.5 rounded-full bg-[#2DD4BF] shadow-[0_0_10px_#2DD4BF] animate-rsPulse"></span>
+                <span class="font-mono text-[9.5px] tracking-[0.14em] text-[#2DD4BF] font-semibold">SCHEDULER UP</span>
+            </div>
+        </div>
+        <div id="etl-runs" hx-get="/dashboard/etl-runs?page=1" hx-trigger="load" hx-swap="innerHTML">
+            <div class="space-y-2 animate-pulse">
+                <div class="h-10 bg-purple-200/5 rounded"></div>
+                <div class="h-10 bg-purple-200/5 rounded"></div>
+                <div class="h-10 bg-purple-200/5 rounded"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ─────── APPROACH LOG SECTION ─────── -->
+    <section class="editorial-section">
+        <div>
+            <div class="editorial-label text-[#4FE8DC]">APPROACH LOG</div>
+            <p class="m-0 mt-3 text-xs text-[#8A83A8] leading-relaxed">
+                Live approach telemetries streamed via Server-Sent Events.
+            </p>
+        </div>
         <div
-            id="metrics-container"
-            hx-get="/dashboard/metrics"
-            hx-trigger="load"
+            id="approaches-container"
+            hx-ext="sse"
+            sse-connect="/api/events/hazards"
+            hx-get="/dashboard/table"
+            hx-trigger="load, sse:hazard, sse:lagged"
             hx-swap="innerHTML"
-            class="relative z-10"
         >
-            <!-- Skeleton loading state -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div class="animate-shimmer text-center p-4 rounded-xl bg-white/[0.03] border border-white/[0.05] h-[72px]"></div>
-                <div class="animate-shimmer text-center p-4 rounded-xl bg-white/[0.03] border border-white/[0.05] h-[72px]"></div>
-                <div class="animate-shimmer text-center p-4 rounded-xl bg-white/[0.03] border border-white/[0.05] h-[72px]"></div>
-                <div class="animate-shimmer text-center p-4 rounded-xl bg-white/[0.03] border border-white/[0.05] h-[72px]"></div>
+            <div class="py-12 text-center text-[#8A83A8] font-mono text-xs animate-pulse">
+                Connecting to live telemetry feed...
             </div>
         </div>
-    </div>
-</div>
-
-<!-- ─── Main Grid: Trajectory + Pipeline ─────────── -->
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-
-    <!-- Velocity Chart (2/3 width) -->
-    <div class="lg:col-span-2 animate-fade-slide-up delay-400">
-        <div class="flex items-center gap-2 mb-3">
-            <span class="section-label text-nebula-blue">Trajectory Data</span>
-        </div>
-        <div class="chart-card rounded-2xl p-5 sm:p-6 relative overflow-hidden">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-5">
-                <div>
-                    <h2 class="text-base font-heading font-semibold text-text-primary">
-                        Velocity Trajectory
-                    </h2>
-                    <p class="text-xs text-text-muted font-body mt-0.5">
-                        Asteroid approach velocity over time
-                    </p>
-                </div>
-                <div class="flex items-center gap-2 flex-shrink-0">
-                    <div id="timeline-buttons-container">
-                        {% include "partials/timeline-buttons.html" %}
-                    </div>
-                    <button
-                        hx-get="/dashboard/velocity?period=7d"
-                        hx-target="#velocity-chart-container"
-                        hx-swap="outerHTML"
-                        hx-trigger="click"
-                        class="btn-icon p-2 rounded-lg"
-                        aria-label="Refresh chart"
-                    >
-                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-                    </button>
-                </div>
-            </div>
-
-            <div class="relative h-64 sm:h-80 chart-container">
-                <canvas id="velocityChart"></canvas>
-            </div>
-
-            <div class="flex justify-between items-center mt-4 pt-4 border-t border-white/[0.06]">
-                <div class="flex items-center gap-2">
-                    <span class="w-2.5 h-2.5 rounded-full bg-nebula-cyan shadow-glow-cyan"></span>
-                    <span class="text-xs font-body text-text-tertiary">Velocity (km/h)</span>
-                </div>
-                <div class="text-xs font-mono text-text-muted">
-                    Updated: <span id="last-updated" class="text-text-secondary font-semibold">—</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ETL Monitor (1/3 width) -->
-    <div class="animate-fade-slide-up delay-500 lg:h-full">
-        <div class="flex items-center gap-2 mb-3">
-            <span class="section-label text-nebula-purple">Pipeline Ops</span>
-        </div>
-        <div class="glass-card rounded-2xl p-5 relative overflow-hidden h-auto lg:h-[calc(100%-2.25rem)]">
-            <div class="flex justify-between items-center mb-4">
-                <div class="flex items-center gap-2.5">
-                        <i data-lucide="database" class="w-4 h-4 text-nebula-purple"></i>
-                    <div>
-                        <h2 class="text-sm font-heading font-semibold text-text-primary">ETL Monitor</h2>
-                        <p class="text-xs text-text-muted font-body">Data pipeline status</p>
-                    </div>
-                </div>
-                <span class="w-2 h-2 rounded-full bg-nebula-cyan pulse-glow" id="etl-status"></span>
-            </div>
-
-            <div
-                id="etl-runs"
-                hx-get="/dashboard/etl-runs?page=1"
-                hx-trigger="load"
-                hx-swap="innerHTML"
-                role="list"
-            >
-                <div class="text-center py-6">
-                    <div class="animate-shimmer rounded-xl h-14 mb-2"></div>
-                    <div class="animate-shimmer rounded-xl h-14 mb-2"></div>
-                    <div class="animate-shimmer rounded-xl h-14"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- ─── Approach Log (Table) ──────────────────────── -->
-<div class="animate-fade-slide-up delay-600">
-    <div class="flex items-center gap-2 mb-3">
-        <span class="section-label text-nebula-cyan">Approach Log</span>
-    </div>
-    <div
-        id="approaches-container"
-        hx-ext="sse"
-        sse-connect="/api/events/hazards"
-        hx-get="/dashboard/table"
-        hx-trigger="load, sse:hazard, sse:lagged"
-        hx-swap="innerHTML"
-    >
-        <div class="glass-card rounded-2xl p-8">
-            <div class="text-center text-text-muted text-sm animate-shimmer rounded-xl h-8"></div>
-        </div>
-    </div>
+    </section>
 </div>
 
 <!-- Hidden velocity data container (SSR initial data) -->

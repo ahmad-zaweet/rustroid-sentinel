@@ -9,6 +9,7 @@
 //! The API layer is organized into the following submodules:
 //!
 //! - [`client`]: HTTP client utilities for external API communication
+//! - [`cursor`]: Opaque keyset-pagination cursor for the asteroid catalog
 //! - [`error`]: Error types for API operations
 //! - [`handlers`]: Request handlers implementing business logic for each endpoint
 //! - [`routes`]: Router configuration defining the API endpoint structure
@@ -43,6 +44,7 @@
 //! ```
 
 pub mod client;
+pub mod cursor;
 pub mod error;
 pub mod handlers;
 pub mod routes;

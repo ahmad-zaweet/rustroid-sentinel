@@ -1,0 +1,50 @@
+<!-- Weekly Report Partial — Editorial Rollup -->
+<div>
+    <!-- Numbers Row -->
+    <div class="flex items-end gap-8 sm:gap-14 flex-wrap">
+        <div>
+            <div class="font-heading font-bold text-3xl sm:text-5xl text-[#F4F1FC] leading-none tracking-tight">{{ total_approaches }}</div>
+            <div class="font-mono text-[9px] tracking-[0.2em] text-[#8A83A8] mt-3 uppercase">TOTAL</div>
+        </div>
+        <div>
+            <div class="font-heading font-bold text-3xl sm:text-5xl text-hazard-critical leading-none tracking-tight drop-shadow-[0_0_24px_rgba(239,68,68,0.45)]">{{ critical_count }}</div>
+            <div class="font-mono text-[9px] tracking-[0.2em] text-[#8A83A8] mt-3 uppercase">CRITICAL</div>
+        </div>
+        <div>
+            <div class="font-heading font-bold text-3xl sm:text-5xl text-hazard-high leading-none tracking-tight drop-shadow-[0_0_24px_rgba(249,115,22,0.35)]">{{ high_count }}</div>
+            <div class="font-mono text-[9px] tracking-[0.2em] text-[#8A83A8] mt-3 uppercase">HIGH</div>
+        </div>
+        <div>
+            <div class="font-heading font-bold text-3xl sm:text-5xl text-hazard-medium leading-none tracking-tight">{{ medium_count }}</div>
+            <div class="font-mono text-[9px] tracking-[0.2em] text-[#8A83A8] mt-3 uppercase">MEDIUM</div>
+        </div>
+        <div>
+            <div class="font-heading font-bold text-3xl sm:text-5xl text-hazard-low leading-none tracking-tight">{{ low_count }}</div>
+            <div class="font-mono text-[9px] tracking-[0.2em] text-[#8A83A8] mt-3 uppercase">LOW</div>
+        </div>
+    </div>
+
+    <!-- Superlatives List -->
+    {% if closest_approach.is_some() || fastest_approach.is_some() || largest_asteroid.is_some() %}
+    <div class="mt-9 space-y-1">
+        {% if let Some(closest) = closest_approach %}
+        <div class="flex items-center gap-4 sm:gap-6 py-3.5 px-2 border-t border-purple-200/10 transition-all duration-200 hover:bg-gradient-to-r hover:from-purple-500/10 hover:to-transparent hover:pl-3.5">
+            <span class="font-mono text-[9px] tracking-[0.2em] text-[#4FE8DC] w-20 flex-shrink-0 uppercase font-semibold">CLOSEST</span>
+            <span class="text-xs sm:text-sm text-[#C3BEDA] font-mono">{{ closest }}</span>
+        </div>
+        {% endif %}
+        {% if let Some(fastest) = fastest_approach %}
+        <div class="flex items-center gap-4 sm:gap-6 py-3.5 px-2 border-t border-purple-200/10 transition-all duration-200 hover:bg-gradient-to-r hover:from-purple-500/10 hover:to-transparent hover:pl-3.5">
+            <span class="font-mono text-[9px] tracking-[0.2em] text-[#C4B5FD] w-20 flex-shrink-0 uppercase font-semibold">FASTEST</span>
+            <span class="text-xs sm:text-sm text-[#C3BEDA] font-mono">{{ fastest }}</span>
+        </div>
+        {% endif %}
+        {% if let Some(largest) = largest_asteroid %}
+        <div class="flex items-center gap-4 sm:gap-6 py-3.5 px-2 border-t border-purple-200/10 transition-all duration-200 hover:bg-gradient-to-r hover:from-purple-500/10 hover:to-transparent hover:pl-3.5">
+            <span class="font-mono text-[9px] tracking-[0.2em] text-[#F59E0B] w-20 flex-shrink-0 uppercase font-semibold">LARGEST</span>
+            <span class="text-xs sm:text-sm text-[#C3BEDA] font-mono">{{ largest }}</span>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>

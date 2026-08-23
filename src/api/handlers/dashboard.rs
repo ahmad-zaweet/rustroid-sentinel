@@ -8,9 +8,11 @@ use tracing::{error, info};
 
 use crate::api::templates::{
     ApproachesTableTemplate, DashboardTemplate, MetricsTemplate, PageItem, VelocityChartTemplate,
+    WeeklyReportTemplate,
 };
 use crate::api::types::TimePeriod;
 use crate::database::dashboard::DashboardRepository;
+use crate::database::report::ReportRepository;
 use crate::metrics::get_metrics_summary;
 use crate::server::AppState;
 
@@ -48,6 +50,9 @@ pub struct DashboardFilters {
     /// Sort direction: "asc" or "desc".
     #[serde(default, deserialize_with = "empty_string_as_none")]
     pub sort_dir: Option<String>,
+    /// When present, only show asteroids currently on JPL's Sentry Risk List
+    /// (non-null torino/palermo scales).
+    pub sentry_only: Option<bool>,
 }
 
 impl DashboardFilters {
@@ -75,6 +80,9 @@ impl DashboardFilters {
             && !sort_dir.is_empty()
         {
             parts.push(format!("sort_dir={}", sort_dir));
+        }
+        if self.sentry_only.unwrap_or(false) {
+            parts.push("sentry_only=true".to_string());
         }
 
         if parts.is_empty() {
@@ -200,6 +208,7 @@ pub async fn dashboard_table(
             hazard_class: filters.hazard_class.as_deref().filter(|h| !h.is_empty()),
             sort_by: filters.sort_by.as_deref().filter(|s| !s.is_empty()),
             sort_dir: filters.sort_dir.as_deref().filter(|s| !s.is_empty()),
+            sentry_only: filters.sentry_only.unwrap_or(false),
         },
     )
     .await
@@ -234,10 +243,12 @@ pub async fn dashboard_table(
         .collect();
 
     // Build filter values for template
+    let sentry_only = filters.sentry_only.unwrap_or(false);
     let query_string = build_filter_query_string(
         filters.hazard_class.as_ref(),
         filters.start_date.as_ref(),
         filters.end_date.as_ref(),
+        sentry_only,
     );
     let hazard_selected = filters
         .hazard_class
@@ -276,6 +287,7 @@ pub async fn dashboard_table(
         is_last_page,
         sort_by,
         sort_dir,
+        sentry_only,
     })
 }
 
@@ -302,6 +314,7 @@ fn build_filter_query_string(
     hazard_class: Option<&String>,
     start_date: Option<&NaiveDate>,
     end_date: Option<&NaiveDate>,
+    sentry_only: bool,
 ) -> String {
     let mut parts = Vec::new();
 
@@ -313,6 +326,9 @@ fn build_filter_query_string(
     }
     if let Some(end) = end_date {
         parts.push(format!("end_date={}", end));
+    }
+    if sentry_only {
+        parts.push("sentry_only=true".to_string());
     }
 
     if parts.is_empty() {
@@ -413,6 +429,58 @@ pub async fn refresh_metrics(State(state): State<AppState>) -> impl IntoResponse
     }
 }
 
+/// GET /dashboard/report
+///
+/// HTMX partial endpoint for the weekly report (trailing 7 days), mirroring
+/// the summary sent to Discord by `rustroid-sentinel report`.
+pub async fn refresh_weekly_report(State(state): State<AppState>) -> impl IntoResponse {
+    info!("Weekly report refresh requested");
+
+    let end_date = chrono::Utc::now().date_naive();
+    let start_date = end_date - chrono::Duration::days(7);
+
+    let summary =
+        match ReportRepository::get_weekly_summary(&state.db_pool, start_date, end_date).await {
+            Ok(s) => s,
+            Err(e) => {
+                error!("Weekly report query failed: {}", e);
+                Default::default()
+            }
+        };
+
+    let notable =
+        |approach: &Option<crate::database::report::NotableApproach>,
+         metric: fn(&crate::database::report::NotableApproach) -> String| {
+            approach.as_ref().map(|a| {
+                format!(
+                    "{} — {} on {}",
+                    a.asteroid_name,
+                    metric(a),
+                    a.close_approach_date
+                )
+            })
+        };
+
+    WeeklyReportTemplate {
+        start_date: summary.start_date.to_string(),
+        end_date: summary.end_date.to_string(),
+        total_approaches: format_number(summary.total_approaches as f64),
+        critical_count: format_number(summary.critical_count as f64),
+        high_count: format_number(summary.high_count as f64),
+        medium_count: format_number(summary.medium_count as f64),
+        low_count: format_number(summary.low_count as f64),
+        closest_approach: notable(&summary.closest_approach, |a| {
+            format!("{:.0} km", a.miss_distance_km)
+        }),
+        fastest_approach: notable(&summary.fastest_approach, |a| {
+            format!("{:.0} km/h", a.velocity_km_per_h)
+        }),
+        largest_asteroid: notable(&summary.largest_asteroid, |a| {
+            format!("{:.3} km diameter", a.estimated_diameter_avg_km)
+        }),
+    }
+}
+
 #[cfg(test)]
 mod dashboard_tests {
     //! API handler unit tests.
@@ -425,13 +493,13 @@ mod dashboard_tests {
         // Test that health response has correct structure
         let response = HealthResponse {
             status: "healthy".to_string(),
-            version: "1.0.0".to_string(),
+            version: "2.0.0".to_string(),
             timestamp: chrono::Utc::now(),
             database_connected: true,
         };
 
         assert_eq!(response.status, "healthy");
-        assert_eq!(response.version, "1.0.0");
+        assert_eq!(response.version, "2.0.0");
         assert!(response.database_connected);
     }
 
@@ -523,14 +591,14 @@ mod dashboard_tests {
 
     #[test]
     fn test_build_filter_query_string_empty() {
-        let query = super::build_filter_query_string(None, None, None);
+        let query = super::build_filter_query_string(None, None, None, false);
         assert_eq!(query, "");
     }
 
     #[test]
     fn test_build_filter_query_string_with_hazard() {
         let hazard = Some("High".to_string());
-        let query = super::build_filter_query_string(hazard.as_ref(), None, None);
+        let query = super::build_filter_query_string(hazard.as_ref(), None, None, false);
         assert!(query.contains("hazard_class=High"));
     }
 }

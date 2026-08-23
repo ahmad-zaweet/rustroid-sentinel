@@ -20,8 +20,10 @@ include:
   - local: ".gitlab/ci/code-quality.yml"
   - local: ".gitlab/ci/docker-build.yml"
   - local: ".gitlab/ci/etl-pipeline.yml"
+  - local: ".gitlab/ci/weekly-report.yml"
 
 stages:
   - quality
   - build
   - run-etl-pipeline
+  - run-weekly-report

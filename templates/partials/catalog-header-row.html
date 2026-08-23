@@ -1,0 +1,29 @@
+<th class="py-3.5 px-2 font-mono text-[9px] tracking-[0.2em] uppercase text-[#7B7499]" scope="col">
+    <button type="button" class="catalog-sort-btn flex items-center gap-1 cursor-pointer transition-colors {% if sort == "name" %}text-[#4FE8DC]{% else %}hover:text-[#F4F1FC]{% endif %}" hx-get="/dashboard/catalog/rows?sort=name&sort_dir={% if sort == "name" && sort_dir == "asc" %}desc{% else %}asc{% endif %}{{ query_string }}" hx-target="#catalog-rows-body" hx-swap="innerHTML">
+        ASTEROID
+    </button>
+</th>
+<th class="py-3.5 px-2 font-mono text-[9px] tracking-[0.2em] uppercase text-[#7B7499] hidden md:table-cell" scope="col">
+    <button type="button" class="catalog-sort-btn flex items-center gap-1 cursor-pointer transition-colors {% if sort == "diameter" %}text-[#4FE8DC]{% else %}hover:text-[#F4F1FC]{% endif %}" hx-get="/dashboard/catalog/rows?sort=diameter&sort_dir={% if sort == "diameter" && sort_dir == "desc" %}asc{% else %}desc{% endif %}{{ query_string }}" hx-target="#catalog-rows-body" hx-swap="innerHTML">
+        AVG. DIAMETER
+    </button>
+</th>
+<th class="py-3.5 px-2 font-mono text-[9px] tracking-[0.2em] uppercase text-[#7B7499] hidden sm:table-cell" scope="col">
+    <button type="button" class="catalog-sort-btn flex items-center gap-1 cursor-pointer transition-colors {% if sort == "approach_activity" %}text-[#4FE8DC]{% else %}hover:text-[#F4F1FC]{% endif %}" hx-get="/dashboard/catalog/rows?sort=approach_activity&sort_dir={% if sort == "approach_activity" && sort_dir == "desc" %}asc{% else %}desc{% endif %}{{ query_string }}" hx-target="#catalog-rows-body" hx-swap="innerHTML">
+        LATEST APPROACH
+    </button>
+</th>
+<th class="py-3.5 px-2 font-mono text-[9px] tracking-[0.2em] uppercase text-[#7B7499] hidden lg:table-cell" scope="col">ORBIT CLASS</th>
+<th class="py-3.5 px-2 font-mono text-[9px] tracking-[0.2em] uppercase text-[#7B7499] hidden lg:table-cell" scope="col">SPECTRAL</th>
+<th class="py-3.5 px-2 font-mono text-[9px] tracking-[0.2em] uppercase text-[#7B7499] hidden lg:table-cell" scope="col">
+    <button type="button" class="catalog-sort-btn flex items-center gap-1 cursor-pointer transition-colors {% if sort == "torino" %}text-[#4FE8DC]{% else %}hover:text-[#F4F1FC]{% endif %}" hx-get="/dashboard/catalog/rows?sort=torino&sort_dir={% if sort == "torino" && sort_dir == "desc" %}asc{% else %}desc{% endif %}{{ query_string }}" hx-target="#catalog-rows-body" hx-swap="innerHTML">
+        TORINO
+    </button>
+</th>
+<th class="py-3.5 px-2 font-mono text-[9px] tracking-[0.2em] uppercase text-[#7B7499] hidden lg:table-cell" scope="col">
+    <button type="button" class="catalog-sort-btn flex items-center gap-1 cursor-pointer transition-colors {% if sort == "palermo" %}text-[#4FE8DC]{% else %}hover:text-[#F4F1FC]{% endif %}" hx-get="/dashboard/catalog/rows?sort=palermo&sort_dir={% if sort == "palermo" && sort_dir == "desc" %}asc{% else %}desc{% endif %}{{ query_string }}" hx-target="#catalog-rows-body" hx-swap="innerHTML">
+        PALERMO
+    </button>
+</th>
+<th class="py-3.5 px-2 font-mono text-[9px] tracking-[0.2em] uppercase text-[#7B7499]" scope="col">FLAGS</th>
+<th class="py-3.5 px-2 font-mono text-[9px] tracking-[0.2em] uppercase text-[#7B7499] text-right hidden sm:table-cell" scope="col">SPK ID</th>
