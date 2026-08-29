@@ -21,7 +21,7 @@ fn test_app_state(db: &TestDatabase) -> AppState {
             max_hazard_subscribers: 100,
             internal_event_rate_limit_requests: 30,
         },
-        "2.0.1".to_string(),
+        "2.1.0".to_string(),
         None,
         None,
         rustroid_sentinel::events::channel(),
