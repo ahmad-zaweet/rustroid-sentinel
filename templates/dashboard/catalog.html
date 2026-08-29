@@ -3,32 +3,32 @@
 <div>
     <!-- Editorial Catalog Lede -->
     <div class="py-12 sm:py-16 max-w-4xl animate-rsRise">
-        <div class="font-mono text-[9.5px] tracking-[0.24em] text-[#C4B5FD] uppercase font-semibold mb-4">
+        <div class="font-mono text-[9.5px] tracking-[0.24em] text-lilac uppercase font-semibold mb-4">
             ASTEROID CATALOG
         </div>
         <h1 class="m-0 font-heading text-2xl sm:text-4xl text-[#F4F1FC] tracking-tight leading-relaxed">
             The full tracked population —
-            <span class="text-[#4FE8DC] font-bold">19,912</span>
+            <span class="text-teal-bright font-bold">19,912</span>
             objects, filterable by orbit class, spectral type, and Sentry virtual-impactor status.
         </h1>
     </div>
 
     <!-- Filter Bar -->
-    <div class="pb-6 mb-4 border-b border-purple-200/10">
+    <div class="catalog-filter-bar pb-5.5 mb-4 border-b border-purple-200/10">
         <form
             id="catalog-filter-form"
             hx-get="/dashboard/catalog/rows"
-            hx-trigger="change from:input, submit"
+            hx-trigger="change from:input, change from:.select, submit"
             hx-target="#catalog-rows-body"
             hx-swap="innerHTML"
             hx-params="not empty"
-            class="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:flex-wrap"
+            class="flex flex-col gap-2.5"
         >
             <input type="hidden" id="sort-input" name="sort" value="{{ sort }}" />
             <input type="hidden" id="sort-dir-input" name="sort_dir" value="{{ sort_dir }}" />
 
             <!-- Search -->
-            <div class="w-full sm:w-auto sm:min-w-[220px]">
+            <div class="w-full">
                 <input
                     type="text"
                     name="name"
@@ -38,79 +38,83 @@
                 />
             </div>
 
-            <span class="w-px h-5 bg-purple-200/15 mx-1 hidden sm:block"></span>
+            <!-- Filter cluster -->
+            <div class="flex items-center gap-2 flex-wrap">
 
             <!-- Classification -->
-            <div class="grid grid-cols-2 gap-1.5 w-full sm:flex sm:items-center sm:w-auto">
+                <div id="orbit-class-select" class="select w-32" data-placeholder="Orbit class">
+                    <button
+                        type="button"
+                        class="filter-input w-full flex items-center justify-between gap-1"
+                        id="orbit-class-select-trigger"
+                        aria-haspopup="listbox"
+                        aria-expanded="false"
+                        aria-controls="orbit-class-select-listbox"
+                        aria-label="Orbit class"
+                    >
+                        <span class="truncate">Orbit class</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="opacity-50 shrink-0"><path d="m6 9 6 6 6-6"/></svg>
+                    </button>
+                    <div id="orbit-class-select-popover" data-popover aria-hidden="true">
+                        <div role="listbox" id="orbit-class-select-listbox" aria-orientation="vertical" aria-labelledby="orbit-class-select-trigger">
+                            <div role="option" data-value="">Orbit class</div>
+                            {% for oc in orbit_classes %}
+                            <div role="option" data-value="{{ oc }}">{{ oc }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <input type="hidden" name="orbit_class" value="" />
+                </div>
+                <div id="spectral-class-select" class="select w-32" data-placeholder="Spectral class">
+                    <button
+                        type="button"
+                        class="filter-input w-full flex items-center justify-between gap-1"
+                        id="spectral-class-select-trigger"
+                        aria-haspopup="listbox"
+                        aria-expanded="false"
+                        aria-controls="spectral-class-select-listbox"
+                        aria-label="Spectral class"
+                    >
+                        <span class="truncate">Spectral class</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="opacity-50 shrink-0"><path d="m6 9 6 6 6-6"/></svg>
+                    </button>
+                    <div id="spectral-class-select-popover" data-popover aria-hidden="true">
+                        <div role="listbox" id="spectral-class-select-listbox" aria-orientation="vertical" aria-labelledby="spectral-class-select-trigger">
+                            <div role="option" data-value="">Spectral class</div>
+                            {% for sc in spectral_classes %}
+                            <div role="option" data-value="{{ sc }}">{{ sc }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <input type="hidden" name="spectral_class" value="" />
+                </div>
+
+                <!-- Date Range -->
                 <input
                     type="text"
-                    name="orbit_class"
-                    list="orbit-class-options"
-                    placeholder="Orbit class"
-                    class="filter-input w-full sm:w-32"
-                    aria-label="Orbit class"
-                />
-                <datalist id="orbit-class-options">
-                    <option value="Apollo"></option>
-                    <option value="Aten"></option>
-                    <option value="Amor"></option>
-                    <option value="Atira"></option>
-                    <option value="IEO"></option>
-                    <option value="MBA"></option>
-                    <option value="TNO"></option>
-                </datalist>
-                <input
-                    type="text"
-                    name="spectral_class"
-                    list="spectral-class-options"
-                    placeholder="Spectral class"
-                    class="filter-input w-full sm:w-32"
-                    aria-label="Spectral class"
-                />
-                <datalist id="spectral-class-options">
-                    <option value="S"></option>
-                    <option value="C"></option>
-                    <option value="X"></option>
-                    <option value="Q"></option>
-                    <option value="V"></option>
-                </datalist>
-            </div>
-
-            <span class="w-px h-5 bg-purple-200/15 mx-1 hidden sm:block"></span>
-
-            <!-- Date Range Inputs -->
-            <div class="grid grid-cols-2 gap-1.5 w-full sm:flex sm:items-center sm:w-auto">
-                <input
-                    type="date"
-                    min="2000-01-01"
-                    max="2100-12-31"
                     name="start_date"
                     placeholder="Start date"
-                    class="filter-input w-full sm:w-auto [color-scheme:dark]"
+                    class="filter-input w-26"
                     aria-label="Start date"
+                    readonly
                 />
                 <input
-                    type="date"
-                    min="2000-01-01"
-                    max="2100-12-31"
+                    type="text"
                     name="end_date"
                     placeholder="End date"
-                    class="filter-input w-full sm:w-auto [color-scheme:dark]"
+                    class="filter-input w-26"
                     aria-label="End date"
+                    readonly
                 />
-            </div>
 
-            <span class="w-px h-5 bg-purple-200/15 mx-1 hidden sm:block"></span>
-
-            <!-- Diameter Range Inputs -->
-            <div class="grid grid-cols-2 gap-1.5 w-full sm:flex sm:items-center sm:w-auto">
+                <!-- Diameter Range -->
                 <input
                     type="number"
                     step="0.001"
                     min="0"
                     name="min_diameter_km"
                     placeholder="Min km"
-                    class="filter-input w-full sm:w-20"
+                    class="filter-input w-20"
                     aria-label="Minimum diameter (km)"
                 />
                 <input
@@ -119,13 +123,11 @@
                     min="0"
                     name="max_diameter_km"
                     placeholder="Max km"
-                    class="filter-input w-full sm:w-20"
+                    class="filter-input w-20"
                     aria-label="Maximum diameter (km)"
                 />
-            </div>
 
-            <!-- Hazard Scale Inputs -->
-            <div class="grid grid-cols-2 gap-1.5 w-full sm:flex sm:items-center sm:w-auto">
+                <!-- Hazard Scale -->
                 <input
                     type="number"
                     step="1"
@@ -133,7 +135,7 @@
                     max="10"
                     name="min_torino_scale"
                     placeholder="Min Torino"
-                    class="filter-input w-full sm:w-24"
+                    class="filter-input w-24"
                     aria-label="Minimum Torino Scale"
                 />
                 <input
@@ -141,37 +143,34 @@
                     step="0.01"
                     name="min_palermo_scale"
                     placeholder="Min Palermo"
-                    class="filter-input w-full sm:w-24"
+                    class="filter-input w-24"
                     aria-label="Minimum Palermo Scale"
                 />
-            </div>
 
-            <span class="w-px h-5 bg-purple-200/15 mx-1 hidden sm:block"></span>
-
-            <!-- Flags -->
-            <div class="flex flex-wrap items-center gap-1.5 w-full sm:w-auto sm:flex-nowrap">
-                <label class="flex items-center gap-2 h-[40px] sm:h-[30px] px-3 rounded-lg font-mono text-[9.5px] tracking-wider border border-purple-200/15 bg-white/[0.02] text-[#8A83A8] hover:text-[#F4F1FC] cursor-pointer transition-colors">
+                <!-- Flags -->
+                <label class="chip-btn gap-2 px-3">
                     <input type="checkbox" name="is_potentially_hazardous" value="true" class="w-3 h-3 accent-nebula-purple rounded" />
                     PHA ONLY
                 </label>
-                <label class="flex items-center gap-2 h-[40px] sm:h-[30px] px-3 rounded-lg font-mono text-[9.5px] tracking-wider border border-purple-200/15 bg-white/[0.02] text-[#8A83A8] hover:text-[#F4F1FC] cursor-pointer transition-colors">
+                <label class="chip-btn gap-2 px-3">
                     <input type="checkbox" name="is_sentry_object" value="true" class="w-3 h-3 accent-nebula-purple rounded" />
                     SENTRY VI
                 </label>
-            </div>
 
-            <!-- Reset Button -->
-            <button
-                type="button"
-                id="catalog-reset-btn"
-                hx-get="/dashboard/catalog/rows"
-                hx-target="#catalog-rows-body"
-                hx-swap="innerHTML"
-                class="chip-btn w-full sm:w-auto px-2.5 sm:ml-auto justify-center"
-                aria-label="Reset filters"
-            >
-                RESET
-            </button>
+                <!-- Reset Button -->
+                <button
+                    type="button"
+                    id="catalog-reset-btn"
+                    onclick="this.form.reset()"
+                    hx-get="/dashboard/catalog/rows"
+                    hx-target="#catalog-rows-body"
+                    hx-swap="innerHTML"
+                    class="chip-btn px-2.5"
+                    aria-label="Reset filters"
+                >
+                    RESET
+                </button>
+            </div>
         </form>
     </div>
 
@@ -194,7 +193,10 @@
         <button
             id="catalog-prev-btn"
             type="button"
-            disabled
+            hx-get="/dashboard/catalog/rows?cursor={{ prev_cursor }}&cursor_history={{ prev_history }}{{ query_string }}&sort={{ sort }}&sort_dir={{ sort_dir }}"
+            hx-target="#catalog-rows-body"
+            hx-swap="innerHTML"
+            {% if !has_prev %}disabled{% endif %}
             class="chip-btn px-4 h-8 text-[10px] disabled:opacity-30 disabled:cursor-not-allowed"
         >
             PREV
@@ -204,10 +206,11 @@
             type="button"
             {% match next_cursor %}
             {% when Some with (c) %}
-            data-cursor="{{ c }}"
+            hx-get="/dashboard/catalog/rows?cursor={{ c }}&cursor_history={{ next_history }}{{ query_string }}&sort={{ sort }}&sort_dir={{ sort_dir }}"
+            hx-target="#catalog-rows-body"
+            hx-swap="innerHTML"
             {% when None %}
             disabled
-            data-cursor=""
             {% endmatch %}
             class="btn-action-teal h-8 px-4 text-[10px] disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:transform-none"
         >
@@ -215,64 +218,4 @@
         </button>
     </div>
 </div>
-
-<script>
-    (function () {
-        const form = document.getElementById("catalog-filter-form");
-        const prevBtn = document.getElementById("catalog-prev-btn");
-
-        let cursorStack = [];
-        let currentCursor = null;
-
-        function resetPagination() {
-            cursorStack = [];
-            currentCursor = null;
-            prevBtn.disabled = true;
-        }
-
-        function fetchPage(cursor) {
-            htmx.ajax("GET", "/dashboard/catalog/rows", {
-                source: form,
-                target: "#catalog-rows-body",
-                swap: "innerHTML",
-                values: cursor ? { cursor: cursor } : {},
-            });
-        }
-
-        document.addEventListener("click", function (event) {
-            const nextBtn = event.target.closest("#catalog-next-btn");
-            if (nextBtn) {
-                const cursor = nextBtn.dataset.cursor;
-                if (!cursor) return;
-                cursorStack.push(currentCursor);
-                currentCursor = cursor;
-                prevBtn.disabled = false;
-                fetchPage(currentCursor);
-                return;
-            }
-
-            const sortBtn = event.target.closest(".catalog-sort-btn");
-            if (sortBtn) {
-                resetPagination();
-                return;
-            }
-
-            const resetBtn = event.target.closest("#catalog-reset-btn");
-            if (resetBtn) {
-                resetPagination();
-                form.reset();
-                return;
-            }
-        });
-
-        prevBtn.addEventListener("click", function () {
-            if (cursorStack.length === 0) return;
-            currentCursor = cursorStack.pop();
-            prevBtn.disabled = cursorStack.length === 0;
-            fetchPage(currentCursor);
-        });
-
-        form.addEventListener("change", resetPagination);
-    })();
-</script>
 {% endblock %}

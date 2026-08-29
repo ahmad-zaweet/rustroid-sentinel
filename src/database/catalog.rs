@@ -467,4 +467,31 @@ impl CatalogRepository {
 
         Ok(Some(rows))
     }
+
+    /// Distinct, non-null `orbit_class` and `spectral_class` values present
+    /// in `asteroid_orbits` today, each sorted alphabetically. Backs the
+    /// catalog page's classification filter dropdowns — since both columns
+    /// are free-text (no fixed taxonomy enforced in the DB), this reflects
+    /// whatever values ingestion has actually written rather than a
+    /// hardcoded list that can drift out of sync.
+    pub async fn distinct_classification_values(
+        pool: &PgPool,
+    ) -> Result<(Vec<String>, Vec<String>), sqlx::Error> {
+        let (orbit_classes, spectral_classes): (Option<Vec<String>>, Option<Vec<String>>) =
+            sqlx::query_as(
+                "SELECT
+                    array_agg(DISTINCT orbit_class ORDER BY orbit_class)
+                        FILTER (WHERE orbit_class IS NOT NULL),
+                    array_agg(DISTINCT spectral_class ORDER BY spectral_class)
+                        FILTER (WHERE spectral_class IS NOT NULL)
+                 FROM asteroid_orbits",
+            )
+            .fetch_one(pool)
+            .await?;
+
+        Ok((
+            orbit_classes.unwrap_or_default(),
+            spectral_classes.unwrap_or_default(),
+        ))
+    }
 }

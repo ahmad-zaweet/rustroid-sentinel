@@ -126,6 +126,9 @@
             rel="stylesheet"
         />
 
+        <!-- Third-party Flatpickr calendar base styles (overridden below in dist.css) -->
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
+
         <!-- Compiled Tailwind & Basecoat CSS -->
         <link rel="stylesheet" href="/css/dist.css" />
 
@@ -283,10 +286,21 @@
             defer
         ></script>
 
+        <!-- Third-party Flatpickr for the catalog date-range filter -->
+        <script src="https://cdn.jsdelivr.net/npm/flatpickr" defer></script>
+        <script
+            src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/rangePlugin.js"
+            defer
+        ></script>
+
+        <!-- Basecoat UI vendored component JS (select, popover, etc.) -->
+        <script src="/js/vendor/basecoat.min.js" defer></script>
+
         <!-- Sentinel Core Interactive Scripts -->
         <script src="/js/dashboard.js" defer></script>
         <script src="/js/welcome.js" defer></script>
         <script src="/js/interactions.js" defer></script>
+        <script src="/js/date-range-picker.js" defer></script>
 
         {% block scripts_extra %}{% endblock %}
     </body>

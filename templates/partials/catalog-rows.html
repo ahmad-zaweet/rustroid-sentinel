@@ -72,6 +72,20 @@
 {% endfor %}
 {% endif %}
 {% if oob_next_button %}
+<!-- Out-of-band: keeps the pagination footer's Prev button in sync -->
+<button
+    id="catalog-prev-btn"
+    hx-swap-oob="true"
+    type="button"
+    hx-get="/dashboard/catalog/rows?cursor={{ prev_cursor }}&cursor_history={{ prev_history }}{{ query_string }}&sort={{ sort }}&sort_dir={{ sort_dir }}"
+    hx-target="#catalog-rows-body"
+    hx-swap="innerHTML"
+    {% if !has_prev %}disabled{% endif %}
+    class="chip-btn px-4 h-8 text-[10px] disabled:opacity-30 disabled:cursor-not-allowed"
+>
+    PREV
+</button>
+
 <!-- Out-of-band: keeps the pagination footer's Next button in sync -->
 <button
     id="catalog-next-btn"
@@ -79,10 +93,11 @@
     type="button"
     {% match next_cursor %}
     {% when Some with (c) %}
-    data-cursor="{{ c }}"
+    hx-get="/dashboard/catalog/rows?cursor={{ c }}&cursor_history={{ next_history }}{{ query_string }}&sort={{ sort }}&sort_dir={{ sort_dir }}"
+    hx-target="#catalog-rows-body"
+    hx-swap="innerHTML"
     {% when None %}
     disabled
-    data-cursor=""
     {% endmatch %}
     class="btn-action-teal h-[32px] px-4 text-[10px] disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:transform-none"
 >

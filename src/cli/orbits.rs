@@ -237,6 +237,11 @@ fn apply_outcome(
         Ok(Some(summary)) => {
             tally.matched += 1;
             tally.consecutive_errors = 0;
+            info!(
+                neo_reference_id = %neo_reference_id,
+                orbit_class = ?summary.orbit_class,
+                "Orbit record found, queuing update"
+            );
             pending.push((id, summary));
         }
         Ok(None) => {

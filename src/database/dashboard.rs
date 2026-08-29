@@ -333,11 +333,22 @@ impl DashboardRepository {
 
         let total: (i64,) = count_query.build_query_as().fetch_one(pool).await?;
 
+        // `hazard_classification` is free text ("Critical"/"High"/"Medium"/"Low"),
+        // so a plain column sort orders alphabetically rather than by severity.
+        // Rank it explicitly so `sort_by=hazard` (and the homepage's "most
+        // hazardous" fetch) actually surfaces Critical first.
         let sort_col = match params.sort_by {
             Some("velocity") => "a.velocity_km_per_h",
             Some("distance") => "a.miss_distance_km",
             Some("name") => "ast.name",
-            Some("hazard") => "a.hazard_classification",
+            Some("hazard") => {
+                "CASE a.hazard_classification \
+                    WHEN 'Critical' THEN 4 \
+                    WHEN 'High' THEN 3 \
+                    WHEN 'Medium' THEN 2 \
+                    ELSE 1 \
+                 END"
+            }
             _ => "a.close_approach_date",
         };
         let sort_order = match params.sort_dir {
@@ -345,7 +356,7 @@ impl DashboardRepository {
             _ => "DESC",
         };
         data_query.push(format!(
-            " ORDER BY {} {}, a.created_at DESC",
+            " ORDER BY {} {}, a.miss_distance_km ASC, a.created_at DESC",
             sort_col, sort_order
         ));
         data_query.push(" LIMIT ");

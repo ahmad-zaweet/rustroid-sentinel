@@ -18,7 +18,9 @@ use uuid::Uuid;
 use crate::api::client::SharedHttpClient;
 use crate::database::DatabasePool;
 use crate::database::repository::AsteroidRepository;
+use crate::nasa::error::NasaApiError;
 use crate::nasa::jpl_sentry::api::JplSentryApi;
+use crate::nasa::jpl_sentry::responses::SentrySummary;
 use crate::settings::RustroidSentinelConfig;
 
 /// Number of scale updates buffered before flushing to the DB, so a large
@@ -135,6 +137,41 @@ struct SentryCheckSummary {
     updated: u64,
 }
 
+/// One completed Sentry lookup task's outcome.
+type LookupOutcome = (Uuid, String, Result<Option<SentrySummary>, NasaApiError>);
+
+/// Applies one joined Sentry lookup result to the running counters and
+/// `pending` updates: increments `matched`/`errored`, logs a match or
+/// failure, and queues the row for the next DB flush. Split out of
+/// `run_sentry_checks` so its per-outcome match doesn't count against that
+/// function's cognitive complexity.
+fn apply_outcome(
+    (id, neo_reference_id, result): LookupOutcome,
+    matched: &mut u32,
+    errored: &mut u32,
+    pending: &mut Vec<(Uuid, Option<i16>, Option<f64>)>,
+) {
+    match result {
+        Ok(Some(summary)) => {
+            *matched += 1;
+            info!(
+                neo_reference_id = %neo_reference_id,
+                torino_scale = ?summary.ts_max,
+                palermo_scale = ?summary.ps_cum,
+                "Sentry match found, queuing scale update"
+            );
+            pending.push((id, summary.ts_max, summary.ps_cum));
+        }
+        Ok(None) => {
+            pending.push((id, None, None));
+        }
+        Err(e) => {
+            *errored += 1;
+            warn!(neo_reference_id = %neo_reference_id, error = %e, "Sentry lookup failed, skipping");
+        }
+    }
+}
+
 /// Looks up `candidates` against the JPL Sentry API and writes results back
 /// to `asteroids`, in chunks of [`LOOKUP_CONCURRENCY`] with an inter-chunk
 /// delay and periodic flush every [`UPDATE_FLUSH_SIZE`] pending updates.
@@ -171,20 +208,7 @@ async fn run_sentry_checks(
         }
 
         while let Some(joined) = in_flight.join_next().await {
-            let (id, neo_reference_id, result) = joined?;
-            match result {
-                Ok(Some(summary)) => {
-                    matched += 1;
-                    pending.push((id, summary.ts_max, summary.ps_cum));
-                }
-                Ok(None) => {
-                    pending.push((id, None, None));
-                }
-                Err(e) => {
-                    errored += 1;
-                    warn!(neo_reference_id = %neo_reference_id, error = %e, "Sentry lookup failed, skipping");
-                }
-            }
+            apply_outcome(joined?, &mut matched, &mut errored, &mut pending);
         }
 
         if pending.len() >= UPDATE_FLUSH_SIZE {

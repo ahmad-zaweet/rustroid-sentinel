@@ -356,7 +356,14 @@ pub enum SortDir {
 pub struct CatalogQuery {
     /// Opaque keyset cursor from a previous page's `next_cursor`. Omitted
     /// (or invalid) starts from the first page.
+    #[serde(default, deserialize_with = "empty_string_as_none")]
     pub cursor: Option<String>,
+    /// Comma-separated stack of cursor tokens for every page visited before
+    /// this one (oldest first; an empty entry represents the cursor-less
+    /// first page), so the Prev link can pop one off without server-side
+    /// session state — see `build_catalog_query_string`/pagination link
+    /// rendering in `src/api/handlers/catalog.rs`.
+    pub cursor_history: Option<String>,
     /// Sort key; only one exists today, but the query shape is fixed now so
     /// adding one later doesn't change the DTO.
     #[serde(default)]

@@ -141,6 +141,67 @@ fn build_catalog_query_string(query: &CatalogQuery) -> String {
     }
 }
 
+/// Sentinel history token standing in for "no cursor" (the first page) — an
+/// empty string can't round-trip through a comma-joined list, since joining
+/// zero entries and joining one empty entry both produce `""`.
+const HISTORY_ROOT: &str = "~";
+
+/// Splits an incoming `cursor_history` value into its stack of cursor
+/// tokens, oldest first. `None`/empty means "first page" (empty stack).
+fn parse_history(raw: Option<&str>) -> Vec<String> {
+    match raw {
+        None | Some("") => Vec::new(),
+        Some(s) => s.split(',').map(String::from).collect(),
+    }
+}
+
+/// The history-stack token for `cursor` — the real token, or
+/// [`HISTORY_ROOT`] if this page had no cursor (the first page).
+fn history_token(cursor: Option<&str>) -> String {
+    cursor
+        .map(String::from)
+        .unwrap_or_else(|| HISTORY_ROOT.to_string())
+}
+
+/// Pagination link data for a page reached with `query.cursor` (raw,
+/// undecoded token) and `query.cursor_history`: what the Next and Prev
+/// links need to carry forward so each is a plain `hx-get`, no client-side
+/// state required.
+struct PageLinks {
+    next_history: String,
+    has_prev: bool,
+    prev_cursor: String,
+    prev_history: String,
+}
+
+fn page_links(query: &CatalogQuery) -> PageLinks {
+    let incoming_history = parse_history(query.cursor_history.as_deref());
+    let current_token = history_token(query.cursor.as_deref());
+
+    let next_history = incoming_history
+        .iter()
+        .cloned()
+        .chain(std::iter::once(current_token))
+        .collect::<Vec<_>>()
+        .join(",");
+
+    let mut prev_history_stack = incoming_history;
+    let prev_token = prev_history_stack.pop();
+    let has_prev = prev_token.is_some();
+    let prev_cursor = match prev_token.as_deref() {
+        Some(HISTORY_ROOT) | None => String::new(),
+        Some(token) => token.to_string(),
+    };
+    let prev_history = prev_history_stack.join(",");
+
+    PageLinks {
+        next_history,
+        has_prev,
+        prev_cursor,
+        prev_history,
+    }
+}
+
 /// Encodes the continuation cursor for the next page, from the last row of
 /// this one — or `None` if `has_more` says there isn't a next page.
 fn next_cursor(
@@ -259,7 +320,12 @@ pub async fn render_catalog_detail_page(
         })
         .unwrap_or_default();
 
-    Ok(CatalogDetailTemplate { asteroid, similar })
+    Ok(CatalogDetailTemplate {
+        asteroid,
+        similar,
+        version: crate::api::templates::APP_VERSION,
+        current_year: chrono::Datelike::year(&chrono::Utc::now()),
+    })
 }
 
 /// GET /dashboard/catalog
@@ -277,14 +343,28 @@ pub async fn render_catalog_page(State(state): State<AppState>) -> impl IntoResp
             }
         };
 
+    let (orbit_classes, spectral_classes) =
+        match CatalogRepository::distinct_classification_values(&state.db_pool).await {
+            Ok(values) => values,
+            Err(e) => {
+                error!("Catalog classification-values query failed: {}", e);
+                (Vec::new(), Vec::new())
+            }
+        };
+
     let next_cursor = next_cursor(&rows, has_more, query.sort, query.sort_dir);
     let sort = sort_key_str(query.sort).to_string();
     let sort_dir = sort_dir_str(query.sort_dir).to_string();
     let query_string = build_catalog_query_string(&query);
+    let links = page_links(&query);
 
     let rows_html = CatalogRowsTemplate {
         rows,
         next_cursor: next_cursor.clone(),
+        next_history: links.next_history.clone(),
+        has_prev: links.has_prev,
+        prev_cursor: links.prev_cursor.clone(),
+        prev_history: links.prev_history.clone(),
         oob_next_button: false,
         sort: sort.clone(),
         sort_dir: sort_dir.clone(),
@@ -299,9 +379,17 @@ pub async fn render_catalog_page(State(state): State<AppState>) -> impl IntoResp
     CatalogTemplate {
         rows_html,
         next_cursor,
+        next_history: links.next_history,
+        has_prev: links.has_prev,
+        prev_cursor: links.prev_cursor,
+        prev_history: links.prev_history,
         sort,
         sort_dir,
         query_string,
+        orbit_classes,
+        spectral_classes,
+        version: crate::api::templates::APP_VERSION,
+        current_year: chrono::Datelike::year(&chrono::Utc::now()),
     }
 }
 
@@ -324,10 +412,15 @@ pub async fn catalog_rows(
         })?;
 
     let next_cursor = next_cursor(&rows, has_more, query.sort, query.sort_dir);
+    let links = page_links(&query);
 
     Ok(CatalogRowsTemplate {
         rows,
         next_cursor,
+        next_history: links.next_history,
+        has_prev: links.has_prev,
+        prev_cursor: links.prev_cursor,
+        prev_history: links.prev_history,
         oob_next_button: true,
         sort: sort_key_str(query.sort).to_string(),
         sort_dir: sort_dir_str(query.sort_dir).to_string(),

@@ -9,7 +9,7 @@
             hx-target="#approaches-container"
             hx-swap="innerHTML"
             hx-params="not empty"
-            class="flex items-center gap-2 flex-wrap w-full"
+            class="flex items-center justify-between gap-2 flex-wrap w-full"
         >
             <input
                 type="hidden"
@@ -62,31 +62,29 @@
             <!-- Date Range Inputs -->
             <div class="flex items-center gap-2 flex-wrap">
                 <input
-                    type="date"
-                    min="2000-01-01"
-                    max="2100-12-31"
+                    type="text"
                     id="start-date"
                     name="start_date"
                     value="{{ start_date_value }}"
                     placeholder="Start date"
-                    class="input h-[30px] px-2.5 font-mono text-[10px] [color-scheme:dark]"
+                    class="input h-7.5 px-2.5 font-mono text-[10px] w-26"
                     aria-label="Start date"
+                    readonly
                 />
                 <input
-                    type="date"
+                    type="text"
                     id="end-date"
                     name="end_date"
                     value="{{ end_date_value }}"
                     placeholder="End date"
-                    class="input h-[30px] px-2.5 font-mono text-[10px] [color-scheme:dark]"
+                    class="input h-7.5 px-2.5 font-mono text-[10px] w-26"
                     aria-label="End date"
-                    min="{% if !start_date_value.is_empty() %}{{ start_date_value }}{% else %}2000-01-01{% endif %}"
-                    max="2100-12-31"
+                    readonly
                 />
             </div>
 
             <!-- Sentry VI Checkbox Toggle -->
-            <label class="flex items-center gap-2 h-[30px] px-3 rounded-lg font-mono text-[9.5px] tracking-wider border border-purple-200/15 bg-white/[0.02] text-[#8A83A8] hover:text-[#F4F1FC] cursor-pointer transition-colors">
+            <label class="flex items-center gap-2 h-7.5 px-3 rounded-lg font-mono text-[9.5px] tracking-wider border border-purple-200/15 bg-white/2 text-[#8A83A8] hover:text-[#F4F1FC] cursor-pointer transition-colors">
                 <input
                     type="checkbox"
                     id="sentry-only-filter"
@@ -104,7 +102,7 @@
                 hx-get="/dashboard/table?sort_by={{ sort_by }}&sort_dir={{ sort_dir }}"
                 hx-target="#approaches-container"
                 hx-swap="innerHTML"
-                class="chip-btn px-2.5 ml-auto"
+                class="chip-btn px-2.5"
                 aria-label="Reset filters"
             >
                 RESET
@@ -118,22 +116,22 @@
             <thead>
                 <tr class="border-b border-purple-200/10">
                     <th class="py-3 px-2 font-mono text-[9px] tracking-[0.2em] uppercase text-[#7B7499]" scope="col">
-                        <button hx-get="/dashboard/table?page=1{{ query_string }}&sort_by=name&sort_dir={% if sort_by == "name" && sort_dir == "desc" %}asc{% else %}desc{% endif %}" hx-target="#approaches-container" hx-swap="innerHTML" class="flex items-center gap-1 cursor-pointer transition-colors {% if sort_by == "name" %}text-[#4FE8DC]{% else %}hover:text-[#F4F1FC]{% endif %}">
+                        <button hx-get="/dashboard/table?page=1{{ query_string }}&sort_by=name&sort_dir={% if sort_by == "name" && sort_dir == "desc" %}asc{% else %}desc{% endif %}" hx-target="#approaches-container" hx-swap="innerHTML" class="flex items-center gap-1 cursor-pointer transition-colors {% if sort_by == "name" %}text-teal-bright{% else %}hover:text-[#F4F1FC]{% endif %}">
                             ASTEROID
                         </button>
                     </th>
                     <th class="py-3 px-2 font-mono text-[9px] tracking-[0.2em] uppercase text-[#7B7499]" scope="col">
-                        <button hx-get="/dashboard/table?page=1{{ query_string }}&sort_by=date&sort_dir={% if sort_by == "date" && sort_dir == "desc" %}asc{% else %}desc{% endif %}" hx-target="#approaches-container" hx-swap="innerHTML" class="flex items-center gap-1 cursor-pointer transition-colors {% if sort_by == "date" %}text-[#4FE8DC]{% else %}hover:text-[#F4F1FC]{% endif %}">
+                        <button hx-get="/dashboard/table?page=1{{ query_string }}&sort_by=date&sort_dir={% if sort_by == "date" && sort_dir == "desc" %}asc{% else %}desc{% endif %}" hx-target="#approaches-container" hx-swap="innerHTML" class="flex items-center gap-1 cursor-pointer transition-colors {% if sort_by == "date" %}text-teal-bright{% else %}hover:text-[#F4F1FC]{% endif %}">
                             APPROACH DATE
                         </button>
                     </th>
                     <th class="py-3 px-2 font-mono text-[9px] tracking-[0.2em] uppercase text-[#7B7499] hidden sm:table-cell" scope="col">
-                        <button hx-get="/dashboard/table?page=1{{ query_string }}&sort_by=velocity&sort_dir={% if sort_by == "velocity" && sort_dir == "desc" %}asc{% else %}desc{% endif %}" hx-target="#approaches-container" hx-swap="innerHTML" class="flex items-center gap-1 cursor-pointer transition-colors {% if sort_by == "velocity" %}text-[#4FE8DC]{% else %}hover:text-[#F4F1FC]{% endif %}">
+                        <button hx-get="/dashboard/table?page=1{{ query_string }}&sort_by=velocity&sort_dir={% if sort_by == "velocity" && sort_dir == "desc" %}asc{% else %}desc{% endif %}" hx-target="#approaches-container" hx-swap="innerHTML" class="flex items-center gap-1 cursor-pointer transition-colors {% if sort_by == "velocity" %}text-teal-bright{% else %}hover:text-[#F4F1FC]{% endif %}">
                             VELOCITY
                         </button>
                     </th>
                     <th class="py-3 px-2 font-mono text-[9px] tracking-[0.2em] uppercase text-[#7B7499] hidden md:table-cell" scope="col">
-                        <button hx-get="/dashboard/table?page=1{{ query_string }}&sort_by=distance&sort_dir={% if sort_by == "distance" && sort_dir == "desc" %}asc{% else %}desc{% endif %}" hx-target="#approaches-container" hx-swap="innerHTML" class="flex items-center gap-1 cursor-pointer transition-colors {% if sort_by == "distance" %}text-[#4FE8DC]{% else %}hover:text-[#F4F1FC]{% endif %}">
+                        <button hx-get="/dashboard/table?page=1{{ query_string }}&sort_by=distance&sort_dir={% if sort_by == "distance" && sort_dir == "desc" %}asc{% else %}desc{% endif %}" hx-target="#approaches-container" hx-swap="innerHTML" class="flex items-center gap-1 cursor-pointer transition-colors {% if sort_by == "distance" %}text-teal-bright{% else %}hover:text-[#F4F1FC]{% endif %}">
                             MISS DISTANCE
                         </button>
                     </th>
@@ -147,7 +145,7 @@
                         PALERMO
                     </th>
                     <th class="py-3 px-2 font-mono text-[9px] tracking-[0.2em] uppercase text-[#7B7499]" scope="col">
-                        <button hx-get="/dashboard/table?page=1{{ query_string }}&sort_by=hazard&sort_dir={% if sort_by == "hazard" && sort_dir == "desc" %}asc{% else %}desc{% endif %}" hx-target="#approaches-container" hx-swap="innerHTML" class="flex items-center gap-1 cursor-pointer transition-colors {% if sort_by == "hazard" %}text-[#4FE8DC]{% else %}hover:text-[#F4F1FC]{% endif %}">
+                        <button hx-get="/dashboard/table?page=1{{ query_string }}&sort_by=hazard&sort_dir={% if sort_by == "hazard" && sort_dir == "desc" %}asc{% else %}desc{% endif %}" hx-target="#approaches-container" hx-swap="innerHTML" class="flex items-center gap-1 cursor-pointer transition-colors {% if sort_by == "hazard" %}text-teal-bright{% else %}hover:text-[#F4F1FC]{% endif %}">
                             HAZARD
                         </button>
                     </th>
@@ -178,7 +176,7 @@
                 <tr class="table-row-hover">
                     <td class="py-3.5 px-2">
                         <div class="flex items-center gap-3 min-w-0">
-                            <span class="w-6 h-6 flex-shrink-0 rounded-lg border border-purple-300/20 bg-[radial-gradient(circle_at_32%_26%,rgba(233,226,255,0.5),rgba(124,58,237,0.3)_52%,rgba(9,7,22,0.95))]"></span>
+                            <span class="w-6 h-6 shrink-0 rounded-lg border border-purple-300/20 bg-[radial-gradient(circle_at_32%_26%,rgba(233,226,255,0.5),rgba(124,58,237,0.3)_52%,rgba(9,7,22,0.95))]"></span>
                             <span class="font-heading font-semibold text-sm text-[#F4F1FC] whitespace-nowrap">
                                 {{ approach.asteroid_name }}
                             </span>
@@ -187,13 +185,13 @@
                     <td class="py-3.5 px-2 text-xs text-[#C3BEDA] whitespace-nowrap font-mono">
                         {{ approach.close_approach_date.format("%b %e, %Y") }}
                     </td>
-                    <td class="py-3.5 px-2 font-mono text-xs text-[#4FE8DC] font-semibold whitespace-nowrap hidden sm:table-cell">
+                    <td class="py-3.5 px-2 font-mono text-xs text-teal-bright font-semibold whitespace-nowrap hidden sm:table-cell">
                         {{ format!("{:.0}", approach.velocity_km_per_h / 1000.0) }}K km/h
                     </td>
-                    <td class="py-3.5 px-2 font-mono text-xs text-[#38BDF8] font-semibold whitespace-nowrap hidden md:table-cell">
+                    <td class="py-3.5 px-2 font-mono text-xs text-nebula-blue font-semibold whitespace-nowrap hidden md:table-cell">
                         {{ format!("{:.2}", approach.miss_distance_km / 1000000.0) }}M km
                     </td>
-                    <td class="py-3.5 px-2 font-mono text-xs text-[#C4B5FD] font-semibold whitespace-nowrap hidden md:table-cell">
+                    <td class="py-3.5 px-2 font-mono text-xs text-lilac font-semibold whitespace-nowrap hidden md:table-cell">
                         {{ format!("{:.3}", approach.estimated_diameter_avg_km) }} km
                     </td>
                     <td class="py-3.5 px-2 font-mono text-xs text-[#7B7499] whitespace-nowrap hidden lg:table-cell">
@@ -247,7 +245,7 @@
                 hx-get="/dashboard/table?page={{ current_page + 1 }}{{ query_string }}&sort_by={{ sort_by }}&sort_dir={{ sort_dir }}"
                 hx-target="#approaches-container"
                 hx-swap="innerHTML"
-                class="btn-action-teal h-[30px] px-3.5 text-[10px]"
+                class="btn-action-teal h-7.5 px-3.5 text-[10px]"
                 id="btn-next"
                 aria-label="Next page"
                 {% if is_last_page %}disabled{% endif %}

@@ -1,6 +1,33 @@
 @import "tailwindcss";
 @import "basecoat-css";
 
+/* Basecoat ships light-mode tokens under `:root` and only swaps to dark
+   values under an `html.dark` class we never set — the app is always dark,
+   so redeclare the tokens directly instead of toggling a class. This keeps
+   every basecoat component (inputs, popovers, switches, scrollbars, etc.)
+   in the site's palette even before we hand-skin it. */
+:root {
+  --background: #050410;
+  --foreground: #F4F1FC;
+  --card: #0A0818;
+  --card-foreground: #F4F1FC;
+  --popover: #0A0818;
+  --popover-foreground: #C3BEDA;
+  --primary: #4FE8DC;
+  --primary-foreground: #050410;
+  --secondary: rgba(255, 255, 255, 0.03);
+  --secondary-foreground: #C3BEDA;
+  --muted: rgba(255, 255, 255, 0.03);
+  --muted-foreground: #8A83A8;
+  --accent: rgba(79, 232, 220, 0.15);
+  --accent-foreground: #4FE8DC;
+  --destructive: #EF4444;
+  --border: rgba(196, 181, 253, 0.15);
+  --input: rgba(196, 181, 253, 0.15);
+  --ring: rgba(79, 232, 220, 0.5);
+  color-scheme: dark;
+}
+
 @theme {
   --color-space-950: #020B15;
   --color-space-900: #040D18;
@@ -136,7 +163,7 @@ a:hover {
 
 @media (max-width: 1024px) {
   .editorial-section {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 1.5rem;
     padding-top: 2.25rem;
     margin-top: 2.5rem;
@@ -158,8 +185,16 @@ a:hover {
   text-transform: uppercase;
 }
 
-/* Filter Bar Inputs */
-.filter-input {
+/* Filter Bar Inputs — also covers basecoat's bare `.input` component, which
+   only resets browser chrome and never sets a visible box itself, so text
+   fields using it (e.g. the approach-log date range) would otherwise render
+   with unstyled native browser input borders. */
+.filter-input,
+.input[type='text'],
+.input[type='number'],
+.input[type='date'],
+.input[type='search'],
+.input:not([type]) {
   height: 30px;
   padding: 0 10px;
   border-radius: 8px;
@@ -171,13 +206,132 @@ a:hover {
   transition: border-color 0.2s ease;
 }
 
-.filter-input::placeholder {
+.filter-input::placeholder,
+.input::placeholder {
   color: #8A83A8;
 }
 
-.filter-input:focus {
+.filter-input:focus,
+.filter-input[aria-expanded="true"],
+.input:focus {
   outline: none;
   border-color: rgba(79, 232, 220, 0.5);
+}
+
+/* Catalog filter bar — single row, search-led, uniform 38px controls */
+.catalog-filter-bar .filter-input,
+.catalog-filter-bar .chip-btn {
+  height: 38px;
+  border-radius: 10px;
+}
+
+/* Flatpickr theme overrides — restyled to match .filter-input above */
+.flatpickr-calendar {
+  background: #0A0818;
+  border: 1px solid rgba(196, 181, 253, 0.15);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.flatpickr-calendar.arrowTop::before,
+.flatpickr-calendar.arrowTop::after {
+  border-bottom-color: rgba(196, 181, 253, 0.15);
+}
+
+.flatpickr-months .flatpickr-month,
+.flatpickr-current-month,
+.flatpickr-weekdays {
+  background: transparent;
+  color: #C3BEDA;
+  fill: #C3BEDA;
+}
+
+.flatpickr-current-month .flatpickr-monthDropdown-months {
+  background: transparent;
+  color: #C3BEDA;
+}
+
+.flatpickr-current-month input.cur-year {
+  color: #C3BEDA;
+}
+
+.flatpickr-weekday {
+  color: #8A83A8;
+  font-size: 9px;
+}
+
+.flatpickr-prev-month:hover svg,
+.flatpickr-next-month:hover svg {
+  fill: #4FE8DC;
+}
+
+.flatpickr-day {
+  color: #C3BEDA;
+  border-radius: 6px;
+}
+
+.flatpickr-day.today {
+  border-color: rgba(79, 232, 220, 0.5);
+}
+
+.flatpickr-day:hover,
+.flatpickr-day:focus {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: transparent;
+}
+
+.flatpickr-day.selected,
+.flatpickr-day.startRange,
+.flatpickr-day.endRange {
+  background: #4FE8DC;
+  border-color: #4FE8DC;
+  color: #050410;
+}
+
+.flatpickr-day.inRange {
+  background: rgba(79, 232, 220, 0.15);
+  border-color: transparent;
+  box-shadow: -5px 0 0 rgba(79, 232, 220, 0.15), 5px 0 0 rgba(79, 232, 220, 0.15);
+}
+
+.flatpickr-day.flatpickr-disabled,
+.flatpickr-day.prevMonthDay,
+.flatpickr-day.nextMonthDay {
+  color: #4A4560;
+}
+
+/* Basecoat select overrides — restyled to match .filter-input above */
+#orbit-class-select-popover,
+#spectral-class-select-popover {
+  background: #0A0818;
+  border: 1px solid rgba(196, 181, 253, 0.15);
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 4px;
+}
+
+#orbit-class-select-listbox [role="option"],
+#spectral-class-select-listbox [role="option"] {
+  color: #C3BEDA;
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+#orbit-class-select-listbox [role="option"]:hover,
+#orbit-class-select-listbox [role="option"].active,
+#spectral-class-select-listbox [role="option"]:hover,
+#spectral-class-select-listbox [role="option"].active {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+#orbit-class-select-listbox [role="option"][aria-selected="true"],
+#spectral-class-select-listbox [role="option"][aria-selected="true"] {
+  background: rgba(79, 232, 220, 0.15);
+  color: #4FE8DC;
 }
 
 /* Chip / Filter Buttons */

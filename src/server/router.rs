@@ -71,6 +71,7 @@ pub fn build_router(state: AppState, timeout: Duration, server_config: ServerCon
             "'unsafe-inline'",
             "https://cdn.tailwindcss.com",
             "https://fonts.googleapis.com",
+            "https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css",
         ])
         .font_src(vec![
             "'self'",

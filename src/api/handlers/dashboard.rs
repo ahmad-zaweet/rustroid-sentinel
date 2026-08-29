@@ -113,11 +113,19 @@ pub async fn render_dashboard(State(state): State<AppState>) -> impl IntoRespons
     let page = 1;
     let page_size = 20;
 
+    // Most-hazardous active approach, scoped to today through the upcoming
+    // week — surfaces the top hazard card's "active" event, not a past one.
+    let today = chrono::Utc::now().date_naive();
+    let week_ahead = today + chrono::Duration::days(7);
+
     let (approaches, total_items) = match DashboardRepository::get_paginated_approaches(
         &state.db_pool,
         crate::database::dashboard::ApproachQueryParams {
             page,
             page_size,
+            start_date: Some(today),
+            end_date: Some(week_ahead),
+            sort_by: Some("hazard"),
             ..Default::default()
         },
     )
@@ -171,6 +179,8 @@ pub async fn render_dashboard(State(state): State<AppState>) -> impl IntoRespons
         velocity_data,
         last_updated,
         period: "7d".to_string(),
+        version: crate::api::templates::APP_VERSION,
+        current_year: chrono::Datelike::year(&chrono::Utc::now()),
     }
 }
 

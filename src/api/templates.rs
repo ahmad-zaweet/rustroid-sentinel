@@ -13,6 +13,10 @@ use axum::{
     response::{Html, IntoResponse, Response},
 };
 
+/// Application version, from `CARGO_PKG_VERSION` — rendered in the footer
+/// of every full-page (non-partial) template.
+pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
+
 /// Askama template for the main dashboard index page.
 #[derive(Template)]
 #[template(path = "dashboard/index.html")]
@@ -35,6 +39,10 @@ pub struct DashboardTemplate {
     pub last_updated: String,
     /// Selected time period for the velocity chart (for active button state).
     pub period: String,
+    /// App version, rendered in the footer.
+    pub version: &'static str,
+    /// Current year, rendered in the footer's copyright line.
+    pub current_year: i32,
 }
 
 impl IntoResponse for DashboardTemplate {
@@ -204,6 +212,17 @@ pub struct CatalogTemplate {
     /// Opaque cursor for the page after the first, or `None` if the first
     /// page is also the last — seeds the Next button's initial state.
     pub next_cursor: Option<String>,
+    /// `cursor_history` value the Next button should send — the current
+    /// page's cursor stack plus this page's own cursor token.
+    pub next_history: String,
+    /// Whether a Prev page exists (false on the first page).
+    pub has_prev: bool,
+    /// Cursor the Prev button should request, or `""` if the target is the
+    /// cursor-less first page.
+    pub prev_cursor: String,
+    /// `cursor_history` value the Prev button should send — the current
+    /// page's cursor stack with its last entry popped.
+    pub prev_history: String,
     /// Active sort key, serialized form (e.g. `"name"`) — used to render
     /// the initial active-sort header styling.
     pub sort: String,
@@ -212,6 +231,17 @@ pub struct CatalogTemplate {
     /// Current filter values as a URL query fragment (leading `&`, or
     /// empty), so sort-header links preserve the active filters.
     pub query_string: String,
+    /// Distinct `orbit_class` values currently present in `asteroid_orbits`,
+    /// sorted alphabetically — populates the orbit-class filter dropdown.
+    pub orbit_classes: Vec<String>,
+    /// Distinct `spectral_class` values currently present in
+    /// `asteroid_orbits`, sorted alphabetically — populates the
+    /// spectral-class filter dropdown.
+    pub spectral_classes: Vec<String>,
+    /// App version, rendered in the footer.
+    pub version: &'static str,
+    /// Current year, rendered in the footer's copyright line.
+    pub current_year: i32,
 }
 
 impl IntoResponse for CatalogTemplate {
@@ -242,6 +272,15 @@ pub struct CatalogRowsTemplate {
     /// Emitted as an out-of-band swap so the pagination footer's Next
     /// button stays in sync with whatever page is currently displayed.
     pub next_cursor: Option<String>,
+    /// `cursor_history` value the Next button should send.
+    pub next_history: String,
+    /// Whether a Prev page exists (false on the first page).
+    pub has_prev: bool,
+    /// Cursor the Prev button should request, or `""` if the target is the
+    /// cursor-less first page.
+    pub prev_cursor: String,
+    /// `cursor_history` value the Prev button should send.
+    pub prev_history: String,
     /// Whether to render the out-of-band Next-button and sort-header sync
     /// blocks. `true` for the live `/dashboard/catalog/rows` response;
     /// `false` when pre-rendering rows to embed in [`CatalogTemplate`],
@@ -280,6 +319,10 @@ pub struct CatalogDetailTemplate {
     /// asteroid hasn't been vectorized yet — an operational state, not an
     /// error, so the template renders nothing rather than an empty-state card.
     pub similar: Vec<AsteroidCatalogRecord>,
+    /// App version, rendered in the footer.
+    pub version: &'static str,
+    /// Current year, rendered in the footer's copyright line.
+    pub current_year: i32,
 }
 
 impl IntoResponse for CatalogDetailTemplate {
