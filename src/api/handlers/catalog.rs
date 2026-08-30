@@ -2,6 +2,8 @@
 //! (`/api/asteroids`), and the matching HTMX SSR page/partial
 //! (`/dashboard/catalog`).
 
+use std::sync::Arc;
+
 use askama::Template;
 use axum::Json;
 use axum::extract::{Path, Query, State};
@@ -15,7 +17,7 @@ use crate::api::types::{
     ApiResponse, AsteroidCatalogRecord, AsteroidDetailRecord, CatalogQuery, CatalogSortKey,
     CursorPage, SortDir,
 };
-use crate::database::catalog::{CatalogListParams, CatalogRepository};
+use crate::database::catalog::CatalogListParams;
 use crate::server::AppState;
 
 /// Rows per catalog page, both for the JSON API and the HTMX partial.
@@ -240,12 +242,16 @@ pub async fn catalog_list(
 ) -> Result<Json<ApiResponse<CursorPage<AsteroidCatalogRecord>>>, StatusCode> {
     let cursor = decode_cursor(&query)?;
 
-    let (rows, has_more) = CatalogRepository::list(&state.db_pool, list_params(&query, cursor))
+    let (rows, has_more) = state
+        .dashboard_cache
+        .catalog_list(&state.db_pool, list_params(&query, cursor))
         .await
         .map_err(|e| {
             error!("Catalog listing query failed: {}", e);
             StatusCode::INTERNAL_SERVER_ERROR
-        })?;
+        })?
+        .as_ref()
+        .clone();
 
     let next_cursor = next_cursor(&rows, has_more, query.sort, query.sort_dir);
 
@@ -262,15 +268,17 @@ pub async fn catalog_detail(
     State(state): State<AppState>,
     Path(neo_reference_id): Path<String>,
 ) -> Result<Json<ApiResponse<AsteroidDetailRecord>>, StatusCode> {
-    let detail = CatalogRepository::get_detail(&state.db_pool, &neo_reference_id)
+    let detail = state
+        .dashboard_cache
+        .catalog_detail(&state.db_pool, &neo_reference_id)
         .await
         .map_err(|e| {
             error!("Catalog detail query failed: {}", e);
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
 
-    match detail {
-        Some(detail) => Ok(Json(ApiResponse::success(detail))),
+    match detail.as_ref() {
+        Some(detail) => Ok(Json(ApiResponse::success(detail.clone()))),
         None => Err(StatusCode::NOT_FOUND),
     }
 }
@@ -284,15 +292,17 @@ pub async fn catalog_similar(
     State(state): State<AppState>,
     Path(neo_reference_id): Path<String>,
 ) -> Result<Json<ApiResponse<Vec<AsteroidCatalogRecord>>>, StatusCode> {
-    let similar = CatalogRepository::similar(&state.db_pool, &neo_reference_id, SIMILAR_LIMIT)
+    let similar = state
+        .dashboard_cache
+        .catalog_similar(&state.db_pool, &neo_reference_id, SIMILAR_LIMIT)
         .await
         .map_err(|e| {
             error!("Similar-asteroids query failed: {}", e);
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
 
-    match similar {
-        Some(rows) => Ok(Json(ApiResponse::success(rows))),
+    match similar.as_ref() {
+        Some(rows) => Ok(Json(ApiResponse::success(rows.clone()))),
         None => Err(StatusCode::NOT_FOUND),
     }
 }
@@ -304,20 +314,28 @@ pub async fn render_catalog_detail_page(
     State(state): State<AppState>,
     Path(neo_reference_id): Path<String>,
 ) -> Result<CatalogDetailTemplate, StatusCode> {
-    let asteroid = CatalogRepository::get_detail(&state.db_pool, &neo_reference_id)
+    let asteroid = state
+        .dashboard_cache
+        .catalog_detail(&state.db_pool, &neo_reference_id)
         .await
         .map_err(|e| {
             error!("Catalog detail page query failed: {}", e);
             StatusCode::INTERNAL_SERVER_ERROR
         })?
+        .as_ref()
+        .clone()
         .ok_or(StatusCode::NOT_FOUND)?;
 
-    let similar = CatalogRepository::similar(&state.db_pool, &neo_reference_id, SIMILAR_LIMIT)
+    let similar = state
+        .dashboard_cache
+        .catalog_similar(&state.db_pool, &neo_reference_id, SIMILAR_LIMIT)
         .await
         .unwrap_or_else(|e| {
             error!("Similar-asteroids query failed for detail page: {}", e);
-            None
+            Arc::new(None)
         })
+        .as_ref()
+        .clone()
         .unwrap_or_default();
 
     Ok(CatalogDetailTemplate {
@@ -334,23 +352,29 @@ pub async fn render_catalog_detail_page(
 pub async fn render_catalog_page(State(state): State<AppState>) -> impl IntoResponse {
     let query = CatalogQuery::default();
 
-    let (rows, has_more) =
-        match CatalogRepository::list(&state.db_pool, list_params(&query, None)).await {
-            Ok(result) => result,
-            Err(e) => {
-                error!("Catalog page query failed: {}", e);
-                (Vec::new(), false)
-            }
-        };
+    let (rows, has_more) = match state
+        .dashboard_cache
+        .catalog_list(&state.db_pool, list_params(&query, None))
+        .await
+    {
+        Ok(result) => result.as_ref().clone(),
+        Err(e) => {
+            error!("Catalog page query failed: {}", e);
+            (Vec::new(), false)
+        }
+    };
 
-    let (orbit_classes, spectral_classes) =
-        match CatalogRepository::distinct_classification_values(&state.db_pool).await {
-            Ok(values) => values,
-            Err(e) => {
-                error!("Catalog classification-values query failed: {}", e);
-                (Vec::new(), Vec::new())
-            }
-        };
+    let (orbit_classes, spectral_classes) = match state
+        .dashboard_cache
+        .catalog_classifications(&state.db_pool)
+        .await
+    {
+        Ok(values) => values.as_ref().clone(),
+        Err(e) => {
+            error!("Catalog classification-values query failed: {}", e);
+            (Vec::new(), Vec::new())
+        }
+    };
 
     let next_cursor = next_cursor(&rows, has_more, query.sort, query.sort_dir);
     let sort = sort_key_str(query.sort).to_string();
@@ -404,12 +428,16 @@ pub async fn catalog_rows(
 ) -> Result<CatalogRowsTemplate, StatusCode> {
     let cursor = decode_cursor(&query)?;
 
-    let (rows, has_more) = CatalogRepository::list(&state.db_pool, list_params(&query, cursor))
+    let (rows, has_more) = state
+        .dashboard_cache
+        .catalog_list(&state.db_pool, list_params(&query, cursor))
         .await
         .map_err(|e| {
             error!("Catalog rows query failed: {}", e);
             StatusCode::INTERNAL_SERVER_ERROR
-        })?;
+        })?
+        .as_ref()
+        .clone();
 
     let next_cursor = next_cursor(&rows, has_more, query.sort, query.sort_dir);
     let links = page_links(&query);

@@ -7,6 +7,7 @@ use std::sync::Arc;
 use std::sync::atomic::AtomicUsize;
 use tokio::sync::broadcast;
 
+use crate::database::cache::DashboardCache;
 use crate::events::HazardEvent;
 use crate::settings::ServerConfig;
 
@@ -19,6 +20,9 @@ pub struct AppState {
     pub version: String,
     /// Shared server configuration.
     pub config: Arc<ServerConfig>,
+    /// TTL-cached `DashboardRepository` reads, shared by the JSON API and
+    /// HTMX SSR partials.
+    pub dashboard_cache: DashboardCache,
     /// Optional Prometheus configuration for scraping.
     pub prometheus_config: Option<crate::settings::PrometheusConfig>,
     /// Optional OTLP/Prometheus Remote Write config for Grafana Cloud.
@@ -54,10 +58,12 @@ impl AppState {
         internal_event_token: Arc<str>,
         shutdown: tokio::sync::watch::Receiver<bool>,
     ) -> Self {
+        let dashboard_cache = DashboardCache::new(&config.cache);
         Self {
             db_pool,
             version,
             config: Arc::new(config),
+            dashboard_cache,
             prometheus_config,
             grafana_cloud_prometheus_config,
             events_tx,

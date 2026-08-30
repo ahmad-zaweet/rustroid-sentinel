@@ -98,6 +98,30 @@ static OTLP_DB_QUERIES: once_cell::sync::Lazy<opentelemetry::metrics::Counter<u6
             .build()
     });
 
+static OTLP_CACHE_REQUESTS: once_cell::sync::Lazy<opentelemetry::metrics::Counter<u64>> =
+    once_cell::sync::Lazy::new(|| {
+        opentelemetry::global::meter("rustroid-sentinel")
+            .u64_counter("dashboard_cache_requests_total")
+            .with_description("Total number of in-memory dashboard cache lookups")
+            .build()
+    });
+
+/// Records a dashboard cache hit/miss over OTLP, mirroring the local
+/// Prometheus `dashboard_cache_requests_total` counter in
+/// [`crate::metrics::registry`]. Grafana Cloud only ever sees metrics pushed
+/// through this OTLP path — the local Prometheus registry is scraped
+/// separately via `/metrics` — so without this, `cache_hit_rate_percent`
+/// stays at 0% whenever a Grafana Cloud Prometheus config is present, since
+/// `get_metrics_summary` prefers querying Grafana Cloud over the local
+/// registry.
+pub(crate) fn record_cache_result_otlp(name: &str, hit: bool) {
+    let otlp_labels = [
+        KeyValue::new("cache", name.to_string()),
+        KeyValue::new("result", if hit { "hit" } else { "miss" }),
+    ];
+    OTLP_CACHE_REQUESTS.add(1, &otlp_labels);
+}
+
 /// Records a database query metric.
 ///
 /// # Arguments

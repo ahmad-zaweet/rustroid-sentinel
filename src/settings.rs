@@ -125,7 +125,7 @@ pub struct DatabaseConfig {
     /// The minimum number of idle connections to maintain in the pool.
     pub min_connections: u32,
     /// The timeout in seconds for establishing a new database connection.
-    pub connect_timeout_seconds: u64,
+    pub connect_timeout_seconds: u32,
 }
 
 impl std::fmt::Debug for DatabaseConfig {
@@ -183,39 +183,25 @@ impl std::fmt::Debug for NasaConfig {
 /// public and needs no key; `request_delay_ms` is a self-imposed courtesy pause
 /// between lookups, since the API exposes no rate-limit headers to react to.
 #[derive(Debug, Deserialize, Clone)]
+#[serde(default)]
 pub struct JplSentryConfig {
     /// The base URL for the Sentry API.
-    #[serde(default = "default_jpl_sentry_base_url")]
     pub base_url: String,
     /// Delay in milliseconds between successive per-asteroid lookups.
-    #[serde(default = "default_jpl_sentry_request_delay_ms")]
-    pub request_delay_ms: u64,
+    pub request_delay_ms: u32,
     /// How many days a `sentry_checked_at` stamp is considered fresh before
     /// the `sentry` CLI command re-checks that asteroid.
-    #[serde(default = "default_jpl_sentry_stale_days")]
-    pub stale_days: u64,
+    pub stale_days: u32,
 }
 
 impl Default for JplSentryConfig {
     fn default() -> Self {
         Self {
-            base_url: default_jpl_sentry_base_url(),
-            request_delay_ms: default_jpl_sentry_request_delay_ms(),
-            stale_days: default_jpl_sentry_stale_days(),
+            base_url: "https://ssd-api.jpl.nasa.gov/sentry.api".to_string(),
+            request_delay_ms: 1000,
+            stale_days: 30,
         }
     }
-}
-
-fn default_jpl_sentry_base_url() -> String {
-    "https://ssd-api.jpl.nasa.gov/sentry.api".to_string()
-}
-
-fn default_jpl_sentry_request_delay_ms() -> u64 {
-    1000
-}
-
-fn default_jpl_sentry_stale_days() -> u64 {
-    30
 }
 
 /// Configuration for the client that interacts with JPL's Small-Body Database
@@ -223,39 +209,25 @@ fn default_jpl_sentry_stale_days() -> u64 {
 /// elements. Like Sentry, it's public and needs no key; `request_delay_ms` is
 /// a self-imposed courtesy pause between lookups.
 #[derive(Debug, Deserialize, Clone)]
+#[serde(default)]
 pub struct JplSbdbConfig {
     /// The base URL for the SBDB API.
-    #[serde(default = "default_jpl_sbdb_base_url")]
     pub base_url: String,
     /// Delay in milliseconds between successive per-asteroid lookups.
-    #[serde(default = "default_jpl_sbdb_request_delay_ms")]
     pub request_delay_ms: u64,
     /// How many days an `orbit_checked_at` stamp is considered fresh before
     /// the `orbits` CLI command re-checks that asteroid.
-    #[serde(default = "default_jpl_sbdb_stale_days")]
-    pub stale_days: u64,
+    pub stale_days: u32,
 }
 
 impl Default for JplSbdbConfig {
     fn default() -> Self {
         Self {
-            base_url: default_jpl_sbdb_base_url(),
-            request_delay_ms: default_jpl_sbdb_request_delay_ms(),
-            stale_days: default_jpl_sbdb_stale_days(),
+            base_url: "https://ssd-api.jpl.nasa.gov/sbdb.api".to_string(),
+            request_delay_ms: 1000,
+            stale_days: 90,
         }
     }
-}
-
-fn default_jpl_sbdb_base_url() -> String {
-    "https://ssd-api.jpl.nasa.gov/sbdb.api".to_string()
-}
-
-fn default_jpl_sbdb_request_delay_ms() -> u64 {
-    1000
-}
-
-fn default_jpl_sbdb_stale_days() -> u64 {
-    90
 }
 
 /// Configuration for sending notifications via a Discord webhook.
@@ -264,7 +236,7 @@ pub struct DiscordConfig {
     /// The URL of the Discord webhook to which notifications will be sent.
     pub webhook_url: String,
     /// The timeout in seconds for the request to send a notification.
-    pub timeout_seconds: u64,
+    pub timeout_seconds: u32,
     /// The maximum number of retries for a failed notification request.
     pub max_retries: u32,
 }
@@ -305,13 +277,13 @@ pub struct HttpConfig {
 #[derive(Debug, Deserialize, Clone)]
 pub struct EtlConfig {
     /// The interval in hours at which the data fetching process should run.
-    pub fetch_interval_hours: u64,
+    pub fetch_interval_hours: u32,
     /// The number of past days of data to fetch during each run.
-    pub lookback_days: u64,
+    pub lookback_days: u32,
     /// The number of future days of data to fetch during each run.
-    pub lookahead_days: u64,
+    pub lookahead_days: u32,
     /// The cooldown period in hours before sending a new alert for the same event.
-    pub alert_cooldown_hours: u64,
+    pub alert_cooldown_hours: u32,
     /// The number of records to process in a single batch.
     pub batch_size: u32,
     /// Data retention settings, used by the `prune` CLI command.
@@ -329,80 +301,111 @@ pub struct EtlConfig {
 /// deletes it. Exists to bound storage growth on capacity-limited databases
 /// (e.g. Neon free tier's 0.5 GB limit).
 #[derive(Debug, Deserialize, Clone)]
+#[serde(default)]
 pub struct RetentionConfig {
     /// Delete `approaches` rows whose `close_approach_date` is older than
     /// this many years.
-    #[serde(default = "default_approach_retention_years")]
     pub approach_retention_years: u32,
     /// Delete `etl_events` rows whose `started_at` is older than this many
     /// days, while always keeping the most recent `etl_events_keep_min` rows.
-    #[serde(default = "default_etl_event_retention_days")]
     pub etl_event_retention_days: u32,
     /// Minimum number of `etl_events` rows to always keep, regardless of age,
     /// so the dashboard's ETL history panel is never empty.
-    #[serde(default = "default_etl_events_keep_min")]
     pub etl_events_keep_min: u32,
 }
 
 impl Default for RetentionConfig {
     fn default() -> Self {
         Self {
-            approach_retention_years: default_approach_retention_years(),
-            etl_event_retention_days: default_etl_event_retention_days(),
-            etl_events_keep_min: default_etl_events_keep_min(),
+            approach_retention_years: 2,
+            etl_event_retention_days: 90,
+            etl_events_keep_min: 50,
         }
     }
 }
 
-fn default_approach_retention_years() -> u32 {
-    2
-}
-
-fn default_etl_event_retention_days() -> u32 {
-    90
-}
-
-fn default_etl_events_keep_min() -> u32 {
-    50
-}
-
 /// Configuration for the HTTP server (Axum).
 #[derive(Debug, Deserialize, Clone)]
+#[serde(default)]
 pub struct ServerConfig {
     /// Request timeout in seconds.
-    #[serde(default = "default_request_timeout")]
-    pub request_timeout_seconds: u64,
+    pub request_timeout_seconds: u32,
     /// Rate limit: maximum requests allowed per period.
-    #[serde(default = "default_rate_limit_requests")]
-    pub rate_limit_requests: u64,
+    pub rate_limit_requests: u32,
     /// Rate limit period in seconds.
-    #[serde(default = "default_rate_limit_period")]
     pub rate_limit_period_seconds: u64,
     /// Maximum number of concurrent `/api/events/hazards` SSE subscribers.
     /// Each stream is a held task, so this bounds worst-case resource use.
-    #[serde(default = "default_max_hazard_subscribers")]
     pub max_hazard_subscribers: usize,
     /// Rate limit for `POST /internal/events`, tighter than the general API
     /// bucket since it's a single trusted caller (the ETL job), not a public
     /// endpoint.
-    #[serde(default = "default_internal_event_rate_limit_requests")]
-    pub internal_event_rate_limit_requests: u64,
+    pub internal_event_rate_limit_requests: u32,
+    /// In-memory dashboard response cache settings.
+    #[serde(default)]
+    pub cache: CacheConfig,
 }
 
-fn default_request_timeout() -> u64 {
-    300
+impl Default for ServerConfig {
+    fn default() -> Self {
+        Self {
+            request_timeout_seconds: 300,
+            rate_limit_period_seconds: 60,
+            rate_limit_requests: 100,
+            max_hazard_subscribers: 100,
+            internal_event_rate_limit_requests: 30,
+            cache: CacheConfig::default(),
+        }
+    }
 }
-fn default_rate_limit_requests() -> u64 {
-    100
+
+/// Controls in-memory TTL caching of read-heavy `DashboardRepository`
+/// queries. Missing fields in config fall back
+/// to `Default::default()` per-field via the container-level `serde(default)`.
+#[derive(Debug, Deserialize, Clone)]
+#[serde(default)]
+pub struct CacheConfig {
+    /// Runtime kill-switch. When `false`, cached wrappers fall through to
+    /// the uncached query on every call.
+    pub enabled: bool,
+    /// TTL in seconds for `get_stats`.
+    pub stats_ttl_secs: u32,
+    /// TTL in seconds for velocity-data queries.
+    pub velocity_ttl_secs: u32,
+    /// TTL in seconds for recent/paginated approach queries.
+    pub approaches_ttl_secs: u32,
+    /// TTL in seconds for ETL run queries.
+    pub etl_runs_ttl_secs: u32,
+    /// TTL in seconds for catalog listing/detail/similar-asteroid queries.
+    pub catalog_ttl_secs: u32,
+    /// TTL in seconds for the catalog's distinct orbit/spectral
+    /// classification values. Longer-lived: this reference data only
+    /// changes when ETL ingests a new classification, unlike the
+    /// per-request catalog queries above.
+    pub catalog_classifications_ttl_secs: u32,
+    /// TTL in seconds for the weekly report summary. Keyed by end date, so
+    /// this only needs to outlast one day's worth of requests to avoid
+    /// re-aggregating on every dashboard load.
+    pub report_ttl_secs: u32,
+    /// Maximum entries held by any single keyed (non-singleton) cache, to
+    /// bound memory growth from high-cardinality keys (pagination, dates).
+    pub max_entries: u32,
 }
-fn default_rate_limit_period() -> u64 {
-    60
-}
-fn default_max_hazard_subscribers() -> usize {
-    100
-}
-fn default_internal_event_rate_limit_requests() -> u64 {
-    30
+
+impl Default for CacheConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            stats_ttl_secs: 300,
+            velocity_ttl_secs: 600,
+            approaches_ttl_secs: 150,
+            etl_runs_ttl_secs: 300,
+            catalog_ttl_secs: 300,
+            catalog_classifications_ttl_secs: 3000,
+            report_ttl_secs: 900,
+            max_entries: 512,
+        }
+    }
 }
 
 /// Configuration for Prometheus/OTLP metrics.
@@ -568,9 +571,10 @@ mod tests {
         assert_eq!(default_version(), env!("CARGO_PKG_VERSION"));
         assert_eq!(default_max_concurrent_requests(), 5);
         assert!(default_enable_gzip());
-        assert_eq!(default_request_timeout(), 300);
-        assert_eq!(default_rate_limit_requests(), 100);
-        assert_eq!(default_rate_limit_period(), 60);
+        let server_config = ServerConfig::default();
+        assert_eq!(server_config.request_timeout_seconds, 300);
+        assert_eq!(server_config.rate_limit_requests, 100);
+        assert_eq!(server_config.rate_limit_period_seconds, 60);
         assert_eq!(default_prometheus_interval(), 60);
     }
 

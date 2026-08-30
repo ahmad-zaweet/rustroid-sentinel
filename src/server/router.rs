@@ -87,7 +87,7 @@ pub fn build_router(state: AppState, timeout: Duration, server_config: ServerCon
         .with_extractor(PeerIp::default())
         .expect_connect_info()
         .quota_default(Quota::requests_per_minute(
-            NonZeroU32::new(server_config.rate_limit_requests as u32)
+            NonZeroU32::new(server_config.rate_limit_requests)
                 .expect("rate_limit_requests must be non-zero"),
         ))
         .finish()
@@ -99,7 +99,7 @@ pub fn build_router(state: AppState, timeout: Duration, server_config: ServerCon
         .with_extractor(PeerIp::default())
         .expect_connect_info()
         .quota_default(Quota::requests_per_minute(
-            NonZeroU32::new(server_config.internal_event_rate_limit_requests as u32)
+            NonZeroU32::new(server_config.internal_event_rate_limit_requests)
                 .expect("internal_event_rate_limit_requests must be non-zero"),
         ))
         .finish()

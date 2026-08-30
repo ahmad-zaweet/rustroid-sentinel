@@ -4,6 +4,8 @@
 //! database. It includes a managed connection pool ([`DatabasePool`]),
 //! safe migration execution, and repository traits for domain entity persistence.
 
+#[cfg(feature = "cache")]
+pub mod cache;
 pub mod catalog;
 pub mod dashboard;
 pub mod embeddings;
@@ -49,7 +51,7 @@ impl DatabasePool {
         let pool = PgPoolOptions::new()
             .max_connections(config.max_connections)
             .min_connections(config.min_connections)
-            .acquire_timeout(Duration::from_secs(config.connect_timeout_seconds))
+            .acquire_timeout(Duration::from_secs(config.connect_timeout_seconds.into()))
             .connect(&config.url)
             .await
             .map_err(|e| {

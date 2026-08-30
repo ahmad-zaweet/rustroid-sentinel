@@ -6,7 +6,6 @@ use tracing::{error, info};
 
 use crate::api::templates::EtlRunsTemplate;
 use crate::api::types::{ApiResponse, EtlRunsResponse};
-use crate::database::dashboard::DashboardRepository;
 use crate::server::AppState;
 
 /// Query parameters for paginated ETL runs.
@@ -34,7 +33,11 @@ fn default_page_size() -> u32 {
 pub async fn etl_runs(State(state): State<AppState>) -> Json<ApiResponse<EtlRunsResponse>> {
     info!("ETL runs requested");
 
-    let runs = match DashboardRepository::get_recent_etl_runs(&state.db_pool).await {
+    let runs = match state
+        .dashboard_cache
+        .get_recent_etl_runs(&state.db_pool)
+        .await
+    {
         Ok(r) => r,
         Err(e) => {
             error!("Failed to fetch ETL runs: {}", e);
@@ -42,7 +45,9 @@ pub async fn etl_runs(State(state): State<AppState>) -> Json<ApiResponse<EtlRuns
         }
     };
 
-    Json(ApiResponse::success(EtlRunsResponse { runs }))
+    Json(ApiResponse::success(EtlRunsResponse {
+        runs: runs.as_ref().clone(),
+    }))
 }
 
 /// GET /dashboard/etl-runs
@@ -57,21 +62,22 @@ pub async fn dashboard_etl_runs(
     let page_size = params.page_size.min(20); // Cap at 20
 
     // Fetch paginated ETL runs
-    let (runs, total_count) =
-        match DashboardRepository::get_paginated_etl_runs(&state.db_pool, params.page, page_size)
-            .await
-        {
-            Ok(result) => result,
-            Err(e) => {
-                error!("Failed to fetch ETL runs for dashboard: {}", e);
-                return EtlRunsTemplate {
-                    etl_runs: vec![],
-                    current_page: params.page,
-                    total_pages: 1,
-                    page_size,
-                };
-            }
-        };
+    let (runs, total_count) = match state
+        .dashboard_cache
+        .get_paginated_etl_runs(&state.db_pool, params.page, page_size)
+        .await
+    {
+        Ok(result) => result.as_ref().clone(),
+        Err(e) => {
+            error!("Failed to fetch ETL runs for dashboard: {}", e);
+            return EtlRunsTemplate {
+                etl_runs: vec![],
+                current_page: params.page,
+                total_pages: 1,
+                page_size,
+            };
+        }
+    };
 
     let total_pages = if total_count > 0 {
         ((total_count as f64) / (page_size as f64)).ceil() as u32

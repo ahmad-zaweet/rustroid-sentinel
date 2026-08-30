@@ -17,6 +17,10 @@
         <span class="font-mono text-xs sm:text-[12.5px] text-[#C3BEDA] font-semibold" id="metric-db-qps">{{ db_queries_per_second }}</span>
     </div>
     <div class="flex items-baseline gap-2">
+        <span class="font-mono text-[9px] tracking-[0.18em] text-[#8A83A8] uppercase">CACHE HIT</span>
+        <span class="font-mono text-xs sm:text-[12.5px] {{ cache_hit_rate_class }} font-semibold" id="metric-cache-hit-rate">{{ cache_hit_rate_percent }}</span>
+    </div>
+    <div class="flex items-baseline gap-2">
         <span class="font-mono text-[9px] tracking-[0.18em] text-[#8A83A8] uppercase">STORAGE</span>
         <span class="font-mono text-xs sm:text-[12.5px] {{ storage_class }} font-semibold" id="metric-storage">{{ storage_used_percent }}</span>
     </div>

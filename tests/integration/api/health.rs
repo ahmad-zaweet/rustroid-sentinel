@@ -22,8 +22,9 @@ async fn test_health_endpoint_returns_200() -> Result<()> {
             rate_limit_period_seconds: 60,
             max_hazard_subscribers: 100,
             internal_event_rate_limit_requests: 30,
+            cache: Default::default(),
         },
-        "2.1.0".to_string(),
+        env!("CARGO_PKG_VERSION").to_string(),
         None,
         None,
         rustroid_sentinel::events::channel(),
@@ -52,7 +53,7 @@ async fn test_health_endpoint_returns_200() -> Result<()> {
     let body: serde_json::Value = serde_json::from_slice(&body_bytes)?;
 
     assert_eq!(body["status"], "ok");
-    assert_eq!(body["version"], "2.1.0");
+    assert_eq!(body["version"], env!("CARGO_PKG_VERSION"));
     assert_eq!(body["database"], "up");
 
     Ok(())

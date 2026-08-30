@@ -6,7 +6,6 @@ use serde::Deserialize;
 use tracing::{error, info};
 
 use crate::api::types::{ApiResponse, ApproachRecord, PaginatedResponse, PaginationInfo};
-use crate::database::dashboard::DashboardRepository;
 use crate::server::AppState;
 
 /// Query parameters for paginated approaches.
@@ -49,22 +48,24 @@ pub async fn approaches(
         params.page, params.page_size
     );
 
-    let (approaches, total_items) = match DashboardRepository::get_paginated_approaches(
-        &state.db_pool,
-        crate::database::dashboard::ApproachQueryParams {
-            page: params.page,
-            page_size: params.page_size,
-            start_date: params.start_date,
-            end_date: params.end_date,
-            hazard_class: params.hazard_class.as_deref(),
-            sort_by: None,
-            sort_dir: None,
-            sentry_only: params.sentry_only.unwrap_or(false),
-        },
-    )
-    .await
+    let (approaches, total_items) = match state
+        .dashboard_cache
+        .get_paginated_approaches(
+            &state.db_pool,
+            crate::database::dashboard::ApproachQueryParams {
+                page: params.page,
+                page_size: params.page_size,
+                start_date: params.start_date,
+                end_date: params.end_date,
+                hazard_class: params.hazard_class.as_deref(),
+                sort_by: None,
+                sort_dir: None,
+                sentry_only: params.sentry_only.unwrap_or(false),
+            },
+        )
+        .await
     {
-        Ok(result) => result,
+        Ok(result) => result.as_ref().clone(),
         Err(e) => {
             error!("Failed to fetch approaches: {}", e);
             return Json(ApiResponse::error_message(format!("Database error: {}", e)));

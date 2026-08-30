@@ -30,6 +30,9 @@ pub struct MetricsSummary {
     pub storage_budget_bytes: i64,
     /// `database_size_bytes` as a percentage of `storage_budget_bytes`.
     pub storage_used_percent: f64,
+    /// In-memory dashboard cache hit rate, aggregated across every cache, as
+    /// a percentage.
+    pub cache_hit_rate_percent: f64,
 }
 
 /// Storage budget assumed when a deployment doesn't override it — Neon free
@@ -50,6 +53,7 @@ impl Default for MetricsSummary {
             database_size_bytes: 0,
             storage_budget_bytes: DEFAULT_STORAGE_BUDGET_BYTES,
             storage_used_percent: 0.0,
+            cache_hit_rate_percent: 0.0,
         }
     }
 }

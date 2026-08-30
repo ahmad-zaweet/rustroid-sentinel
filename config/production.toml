@@ -1,3 +1,13 @@
 [service]
 log_level = "warn"
 
+[server.cache]
+enabled = true
+stats_ttl_secs = 72000 
+velocity_ttl_secs = 72000
+approaches_ttl_secs = 72000
+etl_runs_ttl_secs = 72000
+catalog_ttl_secs = 72000
+catalog_classifications_ttl_secs = 72000
+report_ttl_secs = 72000
+max_entries = 1024

@@ -184,7 +184,8 @@ async fn run_sentry_checks(
 ) -> Result<SentryCheckSummary> {
     let http_client = SharedHttpClient::new(settings).await?;
     let sentry_api = JplSentryApi::new(http_client, settings.jpl_sentry.clone());
-    let request_delay = std::time::Duration::from_millis(settings.jpl_sentry.request_delay_ms);
+    let request_delay =
+        std::time::Duration::from_millis(settings.jpl_sentry.request_delay_ms.into());
 
     let mut pending = Vec::with_capacity(UPDATE_FLUSH_SIZE);
     let mut matched = 0u32;

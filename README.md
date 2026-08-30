@@ -3,6 +3,7 @@
 # Rustroid Sentinel
 
 [![pipeline status](https://gitlab.com/AhmadZaweet/rustroid-sentinel/badges/master/pipeline.svg)](https://gitlab.com/AhmadZaweet/rustroid-sentinel/-/commits/master)
+[![Latest Tag](https://img.shields.io/gitlab/v/tag/AhmadZaweet%2Frustroid-sentinel?style=flat&label=version)](https://gitlab.com/AhmadZaweet/rustroid-sentinel/-/tags)
 
 ![Rust](https://img.shields.io/badge/rust-1.95%2B-orange.svg?style=flat&logo=rust&logoColor=white)
 ![Axum](https://img.shields.io/badge/axum-%23E0234E.svg?style=flat)
@@ -46,7 +47,7 @@
 
 Rustroid Sentinel is a Rust/Tokio platform that turns NASA's raw near-Earth-object feed into a queryable, alertable, self-governing asteroid intelligence system: it ingests NEO approach data idempotently, enriches every catalog object with real JPL impact-risk and orbital data, serves it through an Axum API and HTMX dashboard (including a live SSE hazard stream and pgvector similarity search), and keeps its own database, compute, and alert volume bounded without a human watching it. It's built the way a system that has to run unattended on a metered, size-capped database has to be built — every write is safe to retry, every external dependency degrades instead of taking the system down with it, and every secret is structurally incapable of ending up in a log line. None of that is incidental scaffolding around a simple fetch-and-alert script; it *is* the engineering.
 
-**Tech stack:** Rust (Tokio, Axum, SQLx), PostgreSQL 17 (+ `pgvector`, `pg_trgm`), Askama + HTMX (server-rendered, no SPA framework) with a basecoat-ui + Tailwind CLI frontend build, Serenity-style Discord webhooks, Prometheus + OpenTelemetry/OTLP, Docker (`cargo-chef` multi-stage build), GitLab CI.
+**Tech stack:** Rust (Tokio, Axum, SQLx), PostgreSQL 17 (+ `pgvector`, `pg_trgm`), `moka` in-memory TTL caching, Askama + HTMX (server-rendered, no SPA framework) with a basecoat-ui + Tailwind CLI frontend build, Serenity-style Discord webhooks, Prometheus + OpenTelemetry/OTLP, Docker (`cargo-chef` multi-stage build), GitLab CI.
 
 ## 💬 Discord Community
 
@@ -86,6 +87,15 @@ Grouped by what each cluster of decisions actually buys, not by which module it 
 - **OpenTelemetry distributed tracing** — `tracing` + `tracing-subscriber` with `EnvFilter`, and a `TraceLayer` on every HTTP request, so a slow or failing request can be traced end-to-end rather than reconstructed from scattered log lines.
 - **HTMX partial SSR** — the dashboard's table, ETL history, velocity chart, and metrics widget are independently refreshable Askama templates served from dedicated `/dashboard/*` endpoints, so a slow metrics query doesn't block the rest of the page from rendering ([`src/api/handlers/dashboard.rs`](src/api/handlers/dashboard.rs)).
 
+**In-memory response caching, single-flight by construction.** Read-heavy endpoints sit behind a `moka` async TTL cache instead of hitting Postgres on every request — chosen over the `Mutex`-guarded `cached` crate specifically for `try_get_with`'s single-flight behavior, so concurrent cold misses on the same key collapse onto one in-flight query instead of stampeding the database.
+
+- **Repository-layer, not HTTP-layer** — `DashboardCache` wraps `DashboardRepository`/`CatalogRepository`/`ReportRepository` read methods directly, so `/api/stats` and the HTMX dashboard partial that both call `get_stats` share one cached value instead of each endpoint caching its own serialized response ([`src/database/cache.rs`](src/database/cache.rs)).
+- **`Arc`-wrapped, error-transparent** — every cached value is `Arc<T>`, so a hit clones a pointer, not the underlying `Vec`/struct; `try_get_with` only memoizes `Ok`, so a transient DB error is never cached and is retried on the very next request.
+- **Cardinality-bounded by construction** — singleton queries (`get_stats`, `get_recent_approaches`) use `max_capacity(1)`; queries keyed by user-controlled params (pagination, date filters, catalog search/sort) are bounded by `max_entries` (default 512) so a high-cardinality key space can't grow the cache unbounded.
+- **Runtime kill-switch, per-query TTLs** — `SERVICE__SERVER__CACHE__ENABLED=false` bypasses every cached wrapper and calls the repository directly with no rebuild required; TTLs are independently tunable per query family (stats, velocity, approaches, ETL runs, catalog, catalog classifications, weekly report) via `CacheConfig` ([`src/settings.rs`](src/settings.rs)).
+- **Hit rate surfaced, not assumed** — every lookup increments a `dashboard_cache_requests_total{cache,result}` counter, dual-written to the local Prometheus registry and the OTLP push path so it reaches Grafana Cloud the same way `http_requests_total` does; the dashboard's metrics widget shows the live aggregate hit rate ([`src/metrics/registry.rs`](src/metrics/registry.rs)).
+- **No cross-process invalidation** — `serve` and `load` run as separate OS processes with independent in-memory caches, so an ETL write doesn't invalidate the running server's cache; staleness is bounded purely by TTL. `DashboardCache::invalidate_all()` exists for a future in-process trigger but isn't currently called.
+
 **Catalog intelligence & enrichment.** Beyond ingest-and-alert, the system builds a queryable picture of the whole NEO catalog, not just the approaches that triggered an alert.
 
 - **Live SSE hazard stream** — `GET /api/events/hazards` fans out newly-loaded Critical/High approaches over Server-Sent Events with a 15s keep-alive and a typed `lagged` event (with skip count) for subscribers that fall behind, instead of a silent gap; fed by an internal webhook rather than Postgres `LISTEN/NOTIFY` specifically so it survives a pooled (PgBouncer transaction-mode) database connection where `LISTEN` isn't available ([`src/events/`](src/events/), [`docs/NEON_SERVERLESS_PLAN.md`](docs/NEON_SERVERLESS_PLAN.md)).
@@ -99,7 +109,7 @@ Grouped by what each cluster of decisions actually buys, not by which module it 
 
 **Build, config & release engineering.**
 
-- **Compile-time feature isolation** — `api`, `alerting`, `metrics`, and `etl` are Cargo features gating entire modules and CLI subcommands (`#[cfg(feature = "...")]`), so a metrics-only or alerting-only binary builds without pulling in Axum or Serenity — four independently-buildable binaries from one codebase ([`src/lib.rs`](src/lib.rs), [`src/main.rs`](src/main.rs)).
+- **Compile-time feature isolation** — `api`, `alerting`, `metrics`, and `etl` are Cargo features gating entire modules and CLI subcommands (`#[cfg(feature = "...")]`), so a metrics-only or alerting-only binary builds without pulling in Axum or Serenity — four independently-buildable binaries from one codebase ([`src/lib.rs`](src/lib.rs), [`src/main.rs`](src/main.rs)). A fifth, `cache` (`dep:moka`), is implied by `api` but can be toggled on its own — building `api` without it falls back to querying the repository directly on every call.
 - **Layered configuration** — `config/config.toml` (optional base) → `config/{RUN_ENV}.toml` (required) → `SERVICE__`-prefixed environment variables, merged with typed deserialization errors rather than silently falling back on a malformed value ([`src/settings.rs`](src/settings.rs)).
 - **Graceful shutdown** — `tokio::select!` over `SIGINT`/`SIGTERM` with `axum::serve(...).with_graceful_shutdown(...)`; if signal-handler installation itself fails, it logs and blocks forever rather than silently exiting mid-request ([`src/server/shutdown.rs`](src/server/shutdown.rs)). A `tokio::sync::watch` channel on `AppState.shutdown` is fanned out to the SSE hazard stream, which `select!`s on `shutdown.changed()` so an otherwise-infinite stream ends immediately instead of leaving graceful shutdown waiting on a client that never disconnects ([`src/api/handlers/hazard_events_sse.rs`](src/api/handlers/hazard_events_sse.rs)).
 - **Multi-stage, layer-cached Docker build** — `cargo-chef` separates the dependency-compile layer from the source-compile layer so a source-only change doesn't re-download and re-compile every dependency; runtime stage is a minimal Alpine image running as a non-root `sentinel` user with a container-level `HEALTHCHECK` hitting `/api/health` ([`Dockerfile`](Dockerfile)).
@@ -254,7 +264,7 @@ rustroid-sentinel/
 │   │   └── cursor.rs           # Opaque base64 keyset-pagination cursor for the catalog list endpoint
 │   ├── alert/                  # Hazard-alert dispatch: Discord webhook client + idempotent alert service
 │   ├── cli/                    # extract / transform / load / alert / prune / sentry / orbits / vectorize / report / pipeline subcommand implementations
-│   ├── database/                # Connection pool, migrations runner, write repository, read (dashboard) repository, retention/pruning, catalog queries, pgvector embeddings, weekly-report aggregation
+│   ├── database/                # Connection pool, migrations runner, write repository, read (dashboard) repository, in-memory moka TTL cache, retention/pruning, catalog queries, pgvector embeddings, weekly-report aggregation
 │   ├── events/                  # HazardEvent + broadcast channel; optional pg-listen NOTIFY forwarder
 │   ├── metrics/                 # Prometheus registry, OTLP exporter, Axum metrics middleware, Grafana Cloud query client, storage-budget gauge
 │   ├── models/                  # Asteroid / Approach domain structs, hazard classification enum
@@ -350,6 +360,20 @@ Fields without a `#[serde(default)]` in the corresponding config struct are **re
 | `SERVICE__SERVER__MAX_HAZARD_SUBSCRIBERS` | No | `100` | Max concurrent `GET /api/events/hazards` SSE connections (→ 503 past cap) |
 | `SERVICE__SERVER__INTERNAL_EVENT_RATE_LIMIT_REQUESTS` | No | `30` | Tighter per-minute `GovernorLayer` quota applied only to `POST /internal/events` |
 
+**In-memory cache** (`SERVICE__SERVER__CACHE__…`) — nested under `[server.cache]`; every field is optional with the defaults below (`CacheConfig`, [`src/settings.rs`](src/settings.rs)). Both `config/development.toml` and `config/production.toml` explicitly set `enabled = true`; `false` is only the struct-level fallback if the section is omitted entirely.
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `SERVICE__SERVER__CACHE__ENABLED` | `false` | Runtime kill-switch — `false` bypasses every cached wrapper and calls the repository directly |
+| `SERVICE__SERVER__CACHE__STATS_TTL_SECS` | `300` | TTL for `get_stats` |
+| `SERVICE__SERVER__CACHE__VELOCITY_TTL_SECS` | `600` | TTL for velocity-data queries |
+| `SERVICE__SERVER__CACHE__APPROACHES_TTL_SECS` | `150` | TTL for recent/paginated approach queries |
+| `SERVICE__SERVER__CACHE__ETL_RUNS_TTL_SECS` | `300` | TTL for recent/paginated ETL run queries |
+| `SERVICE__SERVER__CACHE__CATALOG_TTL_SECS` | `300` | TTL for catalog list/detail/similar-asteroid queries |
+| `SERVICE__SERVER__CACHE__CATALOG_CLASSIFICATIONS_TTL_SECS` | `3000` | TTL for the catalog's distinct orbit/spectral classification values — longer-lived since this reference data only changes when ETL ingests a new classification |
+| `SERVICE__SERVER__CACHE__REPORT_TTL_SECS` | `900` | TTL for the weekly report summary |
+| `SERVICE__SERVER__CACHE__MAX_ENTRIES` | `512` | Max entries held by any single keyed (non-singleton) cache store |
+
 **Internal event ingest** (read directly, not `SERVICE__`-prefixed — never a committed config file)
 
 | Variable | Required | Description |
@@ -379,8 +403,6 @@ Fields without a `#[serde(default)]` in the corresponding config struct are **re
 | `jpl_sbdb.base_url` | `https://ssd-api.jpl.nasa.gov/sbdb.api` | JPL Small-Body Database API base URL |
 | `jpl_sbdb.request_delay_ms` | `1000` | Self-imposed courtesy delay between per-asteroid SBDB lookups |
 | `jpl_sbdb.stale_days` | `90` | Days before `orbits` re-fetches an asteroid's orbit (orbits change slowly, so this is longer than `jpl_sentry.stale_days`) |
-
-> **Note:** `.env.example` also lists `SERVICE__SERVER__CACHE__ENABLED`. There is no `cache` field on `ServerConfig` and no response caching is currently implemented — it's a placeholder for the design captured in [`docs/CACHING_PLAN.md`](docs/CACHING_PLAN.md). Setting it currently has no effect.
 
 Service identity fields (`name`, `env`, `host`, `port`, `log_level`) are also overridable via `SERVICE__SERVICE__NAME`, `SERVICE__SERVICE__ENV`, `SERVICE__SERVICE__HOST`, `SERVICE__SERVICE__PORT`, `SERVICE__SERVICE__LOG_LEVEL`, but in practice these are set once per environment in `config/development.toml` / `config/production.toml` rather than per-deploy.
 
@@ -507,9 +529,9 @@ The Docker image's own `HEALTHCHECK` (in [`Dockerfile`](Dockerfile)) polls `/api
 ## 📊 Observability
 
 - **Tracing**: `tracing` + `tracing-subscriber` with `EnvFilter`, level controlled by `SERVICE__SERVICE__LOG_LEVEL` / `config/*.toml`; `TraceLayer` on every HTTP request.
-- **Prometheus**: `HTTP_REQUESTS_TOTAL`, `HTTP_REQUEST_DURATION` (histogram, ms-to-10s buckets), `DATABASE_QUERIES_TOTAL`, `DATABASE_QUERY_DURATION` — all registered in [`src/metrics/registry.rs`](src/metrics/registry.rs), exposed at `GET /metrics` in Prometheus text format.
-- **OTLP push**: the same request/query events are also recorded as OpenTelemetry counters/histograms and pushed to Grafana Cloud every 10 seconds when `SERVICE__PROMETHEUS__URL` is set ([`src/metrics/otlp.rs`](src/metrics/otlp.rs)).
-- **Dashboard metrics widget**: `GET /api/metrics/summary` and `GET /dashboard/metrics` resolve metrics through a fallback chain — Grafana Cloud Prometheus query API → legacy `SERVICE__PROMETHEUS__QUERY_URL` → local Prometheus registry, always merged with live database counts ([`src/metrics/mod.rs`](src/metrics/mod.rs) `get_metrics_summary`).
+- **Prometheus**: `HTTP_REQUESTS_TOTAL`, `HTTP_REQUEST_DURATION` (histogram, ms-to-10s buckets), `DATABASE_QUERIES_TOTAL`, `DATABASE_QUERY_DURATION`, `CACHE_REQUESTS_TOTAL` (labeled `cache`/`result`, one series per `DashboardCache` store) — all registered in [`src/metrics/registry.rs`](src/metrics/registry.rs), exposed at `GET /metrics` in Prometheus text format.
+- **OTLP push**: the same request/query/cache events are also recorded as OpenTelemetry counters/histograms and pushed to Grafana Cloud every 10 seconds when `SERVICE__PROMETHEUS__URL` is set — each Prometheus counter has a matching OTLP instrument recorded alongside it, since Grafana Cloud only ever receives metrics through the OTLP path, never by scraping the local registry ([`src/metrics/otlp.rs`](src/metrics/otlp.rs), [`src/metrics/middleware.rs`](src/metrics/middleware.rs)).
+- **Dashboard metrics widget**: `GET /api/metrics/summary` and `GET /dashboard/metrics` resolve metrics through a fallback chain — Grafana Cloud Prometheus query API → legacy `SERVICE__PROMETHEUS__QUERY_URL` → local Prometheus registry, always merged with live database counts. The widget's `CACHE HIT` tile is the aggregate `dashboard_cache_requests_total` hit rate, computed identically regardless of which tier answered the query ([`src/metrics/mod.rs`](src/metrics/mod.rs) `get_metrics_summary`, [`src/metrics/registry.rs`](src/metrics/registry.rs) `cache_hit_rate_percent`).
 
 ## 🔄 CI/CD Pipeline
 

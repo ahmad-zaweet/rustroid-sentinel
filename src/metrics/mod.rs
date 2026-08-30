@@ -16,7 +16,7 @@ pub mod types;
 // Re-export main items for backward compatibility
 pub use middleware::{metrics_middleware, record_database_query};
 pub use otlp::init_metrics;
-pub use registry::get_metrics;
+pub use registry::{get_metrics, record_cache_result};
 pub use types::MetricsSummary;
 
 use crate::metrics::prometheus::{query_grafana_prometheus, query_local_prometheus};

@@ -6,7 +6,6 @@ use serde::Deserialize;
 use tracing::{error, info};
 
 use crate::api::types::{ApiResponse, TimePeriod, VelocityDataPoint};
-use crate::database::dashboard::DashboardRepository;
 use crate::server::AppState;
 
 /// Query parameters for velocity data with timeline filtering.
@@ -31,7 +30,11 @@ pub async fn velocity(
     info!("Velocity data requested with period: {:?}", params.period);
 
     let velocity_data = if let Some(period) = params.period {
-        match DashboardRepository::get_velocity_data_by_period(&state.db_pool, period).await {
+        match state
+            .dashboard_cache
+            .get_velocity_data_by_period(&state.db_pool, period)
+            .await
+        {
             Ok(data) => data,
             Err(e) => {
                 error!("Failed to fetch velocity data: {}", e);
@@ -39,12 +42,10 @@ pub async fn velocity(
             }
         }
     } else if params.start_date.is_some() || params.end_date.is_some() {
-        match DashboardRepository::get_velocity_data_with_filter(
-            &state.db_pool,
-            params.start_date,
-            params.end_date,
-        )
-        .await
+        match state
+            .dashboard_cache
+            .get_velocity_data_with_filter(&state.db_pool, params.start_date, params.end_date)
+            .await
         {
             Ok(data) => data,
             Err(e) => {
@@ -54,11 +55,10 @@ pub async fn velocity(
         }
     } else {
         // Default to 90 days
-        match DashboardRepository::get_velocity_data_by_period(
-            &state.db_pool,
-            TimePeriod::Last7Days,
-        )
-        .await
+        match state
+            .dashboard_cache
+            .get_velocity_data_by_period(&state.db_pool, TimePeriod::Last7Days)
+            .await
         {
             Ok(data) => data,
             Err(e) => {
@@ -68,5 +68,5 @@ pub async fn velocity(
         }
     };
 
-    Json(ApiResponse::success(velocity_data))
+    Json(ApiResponse::success(velocity_data.as_ref().clone()))
 }

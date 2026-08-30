@@ -6,7 +6,7 @@ readme = "README.md"
 keywords = ["nasa", "asteroid", "etl", "observability", "api"]
 categories = ["science", "web-programming::http-server", "database-implementations"]
 repository = "https://gitlab.com/AhmadZaweet/rustroid-sentinel"
-version = "2.1.0"
+version = "2.3.0"
 edition = "2024"
 
 [lints.clippy]
@@ -45,7 +45,7 @@ axum-helmet = { version = "1.0.*", optional = true }
 real = { version = "0.1", features = ["axum"], optional = true }
 helmet-core = { version = "1.0", optional = true }
 lazy-limit = { version = "1", optional = true }
-cached = { version = "3.1.*", optional = true, features = ["time_stores"] }
+moka = { version = "0.12.*", optional = true, features = ["future"] }
 
 # Database
 sqlx = { version = "0.9.*", default-features = false, features = [
@@ -124,7 +124,7 @@ askama = { version = "0.16.*", optional = true }
 dotenvy = "0.15.*"
 
 [features]
-default = ["api", "alerting", "metrics", "etl"]
+default = ["api", "alerting", "metrics", "etl", "pg-listen", "cache"]
 api = [
     "dep:axum",
     "dep:tower",
@@ -135,7 +135,9 @@ api = [
     "dep:helmet-core",
     "dep:lazy-limit",
     "dep:askama",
+    "cache",
 ]
+cache = ["dep:moka"]
 alerting = ["dep:serenity"]
 metrics = [
     "dep:prometheus",

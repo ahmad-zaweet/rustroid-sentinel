@@ -43,13 +43,13 @@ pub async fn run_server(
         .parse()
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e))?;
 
-    let timeout = std::time::Duration::from_secs(server_config.request_timeout_seconds);
+    let timeout = std::time::Duration::from_secs(server_config.request_timeout_seconds.into());
 
     // Initialize rate limiting rules (global)
     init_rate_limiter!(
         default: RuleConfig::new(
             LazyDuration::seconds(server_config.rate_limit_period_seconds),
-            server_config.rate_limit_requests as u32,
+            server_config.rate_limit_requests,
         )
     )
     .await;

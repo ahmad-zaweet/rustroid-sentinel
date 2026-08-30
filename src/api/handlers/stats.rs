@@ -4,7 +4,6 @@ use axum::{Json, extract::State};
 use tracing::{error, info};
 
 use crate::api::types::{ApiResponse, StatsResponse};
-use crate::database::dashboard::DashboardRepository;
 use crate::server::AppState;
 
 /// GET /api/stats
@@ -16,7 +15,7 @@ pub async fn stats(State(state): State<AppState>) -> Json<ApiResponse<StatsRespo
     let start = std::time::Instant::now();
 
     // Get dashboard statistics
-    let stats = match DashboardRepository::get_stats(&state.db_pool).await {
+    let stats = match state.dashboard_cache.get_stats(&state.db_pool).await {
         Ok(s) => s,
         Err(e) => {
             error!("Failed to fetch dashboard stats: {}", e);
@@ -25,7 +24,11 @@ pub async fn stats(State(state): State<AppState>) -> Json<ApiResponse<StatsRespo
     };
 
     // Get recent approaches
-    let recent_approaches = match DashboardRepository::get_recent_approaches(&state.db_pool).await {
+    let recent_approaches = match state
+        .dashboard_cache
+        .get_recent_approaches(&state.db_pool)
+        .await
+    {
         Ok(a) => a,
         Err(e) => {
             error!("Failed to fetch recent approaches: {}", e);
@@ -34,7 +37,11 @@ pub async fn stats(State(state): State<AppState>) -> Json<ApiResponse<StatsRespo
     };
 
     // Get velocity data
-    let velocity_data = match DashboardRepository::get_velocity_data(&state.db_pool).await {
+    let velocity_data = match state
+        .dashboard_cache
+        .get_velocity_data(&state.db_pool)
+        .await
+    {
         Ok(v) => v,
         Err(e) => {
             error!("Failed to fetch velocity data: {}", e);
@@ -49,8 +56,8 @@ pub async fn stats(State(state): State<AppState>) -> Json<ApiResponse<StatsRespo
         total_asteroids: stats.total_asteroids,
         total_approaches: stats.total_approaches,
         hazardous_count: stats.hazardous_count,
-        recent_approaches,
-        velocity_data,
+        recent_approaches: recent_approaches.as_ref().clone(),
+        velocity_data: velocity_data.as_ref().clone(),
     };
 
     Json(ApiResponse::success(response))

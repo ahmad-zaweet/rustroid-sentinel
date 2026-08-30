@@ -10,7 +10,7 @@
 //!
 //! | Command       | Description                                    |
 //! |---------------|------------------------------------------------|
-//! | `server`      | Start the full HTTP API server                 |
+//! | `serve`      | Start the full HTTP API server                 |
 //! | `extract`     | Run the ETL extraction job manually            |
 //! | `transform`   | Run data transformation (standalone mode)      |
 //! | `load`        | Run database loading (standalone mode)         |

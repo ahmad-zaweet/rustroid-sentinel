@@ -209,12 +209,6 @@ async fn main() {
                     }
                 };
 
-            // Run migrations
-            if let Err(error) = db_pool.run_migrations().await {
-                error!(error = %error, "FATAL: Failed to run database migrations");
-                std::process::exit(1);
-            }
-
             info!(
                 name = %settings.service.name,
                 host = %settings.service.host,

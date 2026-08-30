@@ -17,6 +17,34 @@ use axum::{
 /// of every full-page (non-partial) template.
 pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 
+/// Content hash of `static/css/dist.css`, computed once at startup.
+///
+/// `static_cache_control` sends `public, max-age=3600` for everything under
+/// `/static`, and `dist.css` is referenced by a fixed filename — without
+/// this, a CSS deploy would leave browsers serving the stale stylesheet for
+/// up to an hour against newly-changed markup. Appending the hash as a `?v=`
+/// query string on the `<link>` in `base.html` means a content change always
+/// produces a new URL, so the long `max-age` is safe. Falls back to
+/// `APP_VERSION` if the file can't be read (e.g. before the first
+/// `npm run build:css`).
+static CSS_VERSION: once_cell::sync::Lazy<String> = once_cell::sync::Lazy::new(|| {
+    std::fs::read("static/css/dist.css").map_or_else(
+        |_| APP_VERSION.to_string(),
+        |bytes| {
+            use std::hash::{Hash, Hasher};
+            let mut hasher = std::collections::hash_map::DefaultHasher::new();
+            bytes.hash(&mut hasher);
+            format!("{:x}", hasher.finish())
+        },
+    )
+});
+
+/// Returns the cache-busting version string for `/css/dist.css`. See
+/// [`CSS_VERSION`].
+pub fn css_version() -> &'static str {
+    &CSS_VERSION
+}
+
 /// Askama template for the main dashboard index page.
 #[derive(Template)]
 #[template(path = "dashboard/index.html")]
@@ -152,6 +180,8 @@ pub struct MetricsTemplate {
     pub requests_per_second: String,
     pub error_rate_percent: String,
     pub error_rate_class: String,
+    pub cache_hit_rate_percent: String,
+    pub cache_hit_rate_class: String,
     pub avg_response_time_ms: String,
     pub db_queries_per_second: String,
     pub storage_used_percent: String,

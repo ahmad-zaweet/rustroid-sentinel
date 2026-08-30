@@ -122,6 +122,83 @@ pub(crate) static DATABASE_QUERY_DURATION: Lazy<HistogramVec> = Lazy::new(|| {
     })
 });
 
+/// In-memory cache hit/miss counter, labeled by cache name (`stats`,
+/// `catalog_list`, etc.) and result (`hit`/`miss`).
+pub(crate) static CACHE_REQUESTS_TOTAL: Lazy<IntCounterVec> = Lazy::new(|| {
+    let m = IntCounterVec::new(
+        Opts::new(
+            "dashboard_cache_requests_total",
+            "Total number of in-memory dashboard cache lookups",
+        ),
+        &["cache", "result"],
+    )
+    .unwrap_or_else(|e| {
+        error!(error = %e, "Failed to create dashboard_cache_requests_total metric");
+        panic!(
+            "Failed to create dashboard_cache_requests_total metric: {}",
+            e
+        );
+    });
+    register_metric(m, "dashboard_cache_requests_total").unwrap_or_else(|e| {
+        error!(error = %e, "Failed to register dashboard_cache_requests_total metric");
+        panic!(
+            "Failed to register dashboard_cache_requests_total metric: {}",
+            e
+        );
+    })
+});
+
+/// Records one cache lookup outcome for `name` (`hit` or `miss`), to both
+/// the local Prometheus registry (`/metrics` scrape) and, via
+/// [`crate::metrics::middleware::record_cache_result_otlp`], the OTLP push
+/// path Grafana Cloud actually receives.
+pub fn record_cache_result(name: &str, hit: bool) {
+    CACHE_REQUESTS_TOTAL
+        .with_label_values(&[name, if hit { "hit" } else { "miss" }])
+        .inc();
+    crate::metrics::middleware::record_cache_result_otlp(name, hit);
+}
+
+/// Pure hit-rate calculation: `hits / (hits + misses) * 100`, or `0.0` when
+/// there have been no lookups yet. Split out from [`cache_hit_rate_percent`]
+/// so the arithmetic is unit-testable without touching the global registry.
+fn hit_rate_percent(hits: f64, misses: f64) -> f64 {
+    let total = hits + misses;
+    if total <= 0.0 {
+        return 0.0;
+    }
+    (hits / total) * 100.0
+}
+
+/// Aggregate in-memory dashboard cache hit rate across every cache, as a
+/// percentage. Reads straight from the local [`REGISTRY`] rather than
+/// through an HTTP scrape, since it always runs in the same process as the
+/// counters it's reading.
+pub fn cache_hit_rate_percent() -> f64 {
+    let mut hits = 0.0;
+    let mut misses = 0.0;
+
+    for family in REGISTRY.gather() {
+        if family.name() != "dashboard_cache_requests_total" {
+            continue;
+        }
+        for metric in family.get_metric() {
+            let value = metric.get_counter().value();
+            let is_hit = metric
+                .get_label()
+                .iter()
+                .any(|l| l.name() == "result" && l.value() == "hit");
+            if is_hit {
+                hits += value;
+            } else {
+                misses += value;
+            }
+        }
+    }
+
+    hit_rate_percent(hits, misses)
+}
+
 /// Returns Prometheus-formatted metrics for scraping.
 ///
 /// # Returns
@@ -149,4 +226,71 @@ pub async fn get_metrics() -> impl IntoResponse {
 #[cfg(not(feature = "metrics"))]
 pub async fn get_metrics() -> impl IntoResponse {
     (axum::http::StatusCode::NOT_IMPLEMENTED, "Metrics disabled")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn hit_rate_percent_no_lookups_is_zero() {
+        assert_eq!(hit_rate_percent(0.0, 0.0), 0.0);
+    }
+
+    #[test]
+    fn hit_rate_percent_all_hits_is_100() {
+        assert_eq!(hit_rate_percent(10.0, 0.0), 100.0);
+    }
+
+    #[test]
+    fn hit_rate_percent_all_misses_is_zero() {
+        assert_eq!(hit_rate_percent(0.0, 10.0), 0.0);
+    }
+
+    #[test]
+    fn hit_rate_percent_computes_ratio() {
+        assert!((hit_rate_percent(3.0, 1.0) - 75.0).abs() < 1e-9);
+    }
+
+    // `CACHE_REQUESTS_TOTAL` is a process-wide static shared by every test
+    // in this binary, so each test below uses its own unique label value to
+    // stay isolated regardless of test execution order or parallelism.
+
+    #[test]
+    fn record_cache_result_increments_labeled_counter() {
+        let name = "registry_test_cache_increment";
+        let before_hit = CACHE_REQUESTS_TOTAL.with_label_values(&[name, "hit"]).get();
+        let before_miss = CACHE_REQUESTS_TOTAL
+            .with_label_values(&[name, "miss"])
+            .get();
+
+        record_cache_result(name, true);
+        record_cache_result(name, true);
+        record_cache_result(name, false);
+
+        assert_eq!(
+            CACHE_REQUESTS_TOTAL.with_label_values(&[name, "hit"]).get(),
+            before_hit + 2
+        );
+        assert_eq!(
+            CACHE_REQUESTS_TOTAL
+                .with_label_values(&[name, "miss"])
+                .get(),
+            before_miss + 1
+        );
+    }
+
+    #[test]
+    fn cache_hit_rate_percent_reflects_recorded_results() {
+        let name = "registry_test_cache_hit_rate";
+        record_cache_result(name, true);
+        record_cache_result(name, true);
+        record_cache_result(name, true);
+        record_cache_result(name, false);
+
+        // Aggregate across all caches, so this can only assert a lower
+        // bound: the 3 hits recorded here guarantee at least this many
+        // "hit" observations exist process-wide.
+        assert!(cache_hit_rate_percent() > 0.0);
+    }
 }

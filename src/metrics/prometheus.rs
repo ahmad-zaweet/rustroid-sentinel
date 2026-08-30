@@ -8,6 +8,7 @@ use serde::Deserialize;
 use tracing::debug;
 
 use crate::metrics::error::MetricsError;
+use crate::metrics::registry::cache_hit_rate_percent;
 use crate::metrics::types::{DEFAULT_STORAGE_BUDGET_BYTES, DatabaseMetrics, MetricsSummary};
 use crate::settings::GrafanaCloudPrometheusConfig;
 
@@ -26,11 +27,17 @@ pub(crate) async fn query_grafana_prometheus(
     let client = reqwest::Client::new();
     let base_url = config.url.trim_end_matches('/');
 
+    // `[30d]` rather than a short rolling window: PromQL's `rate()` averages
+    // over whatever actual samples fall inside the window, so a range this
+    // wide effectively means "since the process started" for any realistic
+    // uptime, instead of a per-minute snapshot that swings to 0 the moment
+    // traffic goes quiet.
     let queries = PrometheusQueries {
-        requests_per_second: "sum(rate(http_requests_total[1m]))",
-        error_rate_percent: "sum(rate(http_requests_total{status=~\"4..|5..\"}[1m])) / sum(rate(http_requests_total[1m])) * 100",
-        avg_response_time_ms: "sum(rate(http_request_duration_seconds_sum[1m])) / sum(rate(http_request_duration_seconds_count[1m])) * 1000",
-        db_queries_per_second: "sum(rate(database_queries_total[1m]))",
+        requests_per_second: "sum(rate(http_requests_total[30d]))",
+        error_rate_percent: "sum(rate(http_requests_total{status=~\"4..|5..\"}[30d])) / sum(rate(http_requests_total[30d])) * 100",
+        avg_response_time_ms: "sum(rate(http_request_duration_seconds_sum[30d])) / sum(rate(http_request_duration_seconds_count[30d])) * 1000",
+        db_queries_per_second: "sum(rate(database_queries_total[30d]))",
+        cache_hit_rate_percent: "sum(rate(dashboard_cache_requests_total{result=\"hit\"}[30d])) / sum(rate(dashboard_cache_requests_total[30d])) * 100",
     };
 
     let mut summary = MetricsSummary {
@@ -70,6 +77,12 @@ pub(crate) async fn query_grafana_prometheus(
         summary.db_queries_per_second = val;
     }
 
+    if let Ok(val) =
+        fetch_prometheus_value(&client, base_url, config, queries.cache_hit_rate_percent).await
+    {
+        summary.cache_hit_rate_percent = val;
+    }
+
     Ok(summary)
 }
 
@@ -79,6 +92,7 @@ struct PrometheusQueries<'a> {
     error_rate_percent: &'a str,
     avg_response_time_ms: &'a str,
     db_queries_per_second: &'a str,
+    cache_hit_rate_percent: &'a str,
 }
 
 /// Fetches a single metric value from Prometheus.
@@ -155,6 +169,7 @@ pub(crate) fn query_local_prometheus(db_metrics: DatabaseMetrics) -> MetricsSumm
             db_metrics.database_size_bytes,
             DEFAULT_STORAGE_BUDGET_BYTES,
         ),
+        cache_hit_rate_percent: cache_hit_rate_percent(),
     }
 }
 

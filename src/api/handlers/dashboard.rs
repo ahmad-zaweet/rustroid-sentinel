@@ -1,5 +1,7 @@
 //! Dashboard handlers (SSR and HTMX partials).
 
+use std::sync::Arc;
+
 use axum::response::IntoResponse;
 use axum::{extract::Query, extract::State};
 use chrono::NaiveDate;
@@ -11,8 +13,6 @@ use crate::api::templates::{
     WeeklyReportTemplate,
 };
 use crate::api::types::TimePeriod;
-use crate::database::dashboard::DashboardRepository;
-use crate::database::report::ReportRepository;
 use crate::metrics::get_metrics_summary;
 use crate::server::AppState;
 
@@ -101,7 +101,7 @@ pub async fn render_dashboard(State(state): State<AppState>) -> impl IntoRespons
     info!("Dashboard SSR requested");
 
     // Fetch stats
-    let stats = match DashboardRepository::get_stats(&state.db_pool).await {
+    let stats = match state.dashboard_cache.get_stats(&state.db_pool).await {
         Ok(s) => s,
         Err(e) => {
             error!("Dashboard stats query failed: {}", e);
@@ -118,20 +118,22 @@ pub async fn render_dashboard(State(state): State<AppState>) -> impl IntoRespons
     let today = chrono::Utc::now().date_naive();
     let week_ahead = today + chrono::Duration::days(7);
 
-    let (approaches, total_items) = match DashboardRepository::get_paginated_approaches(
-        &state.db_pool,
-        crate::database::dashboard::ApproachQueryParams {
-            page,
-            page_size,
-            start_date: Some(today),
-            end_date: Some(week_ahead),
-            sort_by: Some("hazard"),
-            ..Default::default()
-        },
-    )
-    .await
+    let (approaches, total_items) = match state
+        .dashboard_cache
+        .get_paginated_approaches(
+            &state.db_pool,
+            crate::database::dashboard::ApproachQueryParams {
+                page,
+                page_size,
+                start_date: Some(today),
+                end_date: Some(week_ahead),
+                sort_by: Some("hazard"),
+                ..Default::default()
+            },
+        )
+        .await
     {
-        Ok(result) => result,
+        Ok(result) => result.as_ref().clone(),
         Err(e) => {
             error!("Dashboard approaches query failed: {}", e);
             (Vec::new(), 0)
@@ -139,13 +141,12 @@ pub async fn render_dashboard(State(state): State<AppState>) -> impl IntoRespons
     };
 
     // Fetch velocity data for the chart (last 7 days by default to match UI)
-    let velocity_data = match DashboardRepository::get_velocity_data_by_period(
-        &state.db_pool,
-        crate::api::types::TimePeriod::Last7Days,
-    )
-    .await
+    let velocity_data = match state
+        .dashboard_cache
+        .get_velocity_data_by_period(&state.db_pool, crate::api::types::TimePeriod::Last7Days)
+        .await
     {
-        Ok(data) => data,
+        Ok(data) => data.as_ref().clone(),
         Err(e) => {
             error!("Dashboard velocity data query failed: {}", e);
             Vec::new()
@@ -208,22 +209,24 @@ pub async fn dashboard_table(
     }
 
     // Fetch paginated approaches
-    let (approaches, total_items) = match DashboardRepository::get_paginated_approaches(
-        &state.db_pool,
-        crate::database::dashboard::ApproachQueryParams {
-            page,
-            page_size,
-            start_date: filters.start_date,
-            end_date: filters.end_date,
-            hazard_class: filters.hazard_class.as_deref().filter(|h| !h.is_empty()),
-            sort_by: filters.sort_by.as_deref().filter(|s| !s.is_empty()),
-            sort_dir: filters.sort_dir.as_deref().filter(|s| !s.is_empty()),
-            sentry_only: filters.sentry_only.unwrap_or(false),
-        },
-    )
-    .await
+    let (approaches, total_items) = match state
+        .dashboard_cache
+        .get_paginated_approaches(
+            &state.db_pool,
+            crate::database::dashboard::ApproachQueryParams {
+                page,
+                page_size,
+                start_date: filters.start_date,
+                end_date: filters.end_date,
+                hazard_class: filters.hazard_class.as_deref().filter(|h| !h.is_empty()),
+                sort_by: filters.sort_by.as_deref().filter(|s| !s.is_empty()),
+                sort_dir: filters.sort_dir.as_deref().filter(|s| !s.is_empty()),
+                sentry_only: filters.sentry_only.unwrap_or(false),
+            },
+        )
+        .await
     {
-        Ok(result) => result,
+        Ok(result) => result.as_ref().clone(),
         Err(e) => {
             error!("Failed to fetch approaches for dashboard table: {}", e);
             return Err(axum::http::StatusCode::INTERNAL_SERVER_ERROR);
@@ -375,14 +378,17 @@ pub async fn refresh_velocity_chart(
         TimePeriod::LastYear => "1y",
     };
 
-    let velocity_data =
-        match DashboardRepository::get_velocity_data_by_period(&state.db_pool, period).await {
-            Ok(data) => data,
-            Err(e) => {
-                error!("Failed to fetch velocity data: {}", e);
-                Vec::new()
-            }
-        };
+    let velocity_data = match state
+        .dashboard_cache
+        .get_velocity_data_by_period(&state.db_pool, period)
+        .await
+    {
+        Ok(data) => data.as_ref().clone(),
+        Err(e) => {
+            error!("Failed to fetch velocity data: {}", e);
+            Vec::new()
+        }
+    };
 
     let now = chrono::Local::now();
     let last_updated = now.format("%I:%M:%S %p").to_string();
@@ -428,10 +434,24 @@ pub async fn refresh_metrics(State(state): State<AppState>) -> impl IntoResponse
         "text-hazard-low"
     };
 
+    // Higher is better here (opposite of the error-rate thresholds above):
+    // a cold cache right after startup isn't a problem, so the "critical"
+    // threshold only trips once a warm cache is clearly missing often.
+    let cache_hit_rate_percent = metrics.0.cache_hit_rate_percent;
+    let cache_hit_rate_class = if cache_hit_rate_percent < 50.0 {
+        "text-hazard-critical"
+    } else if cache_hit_rate_percent < 80.0 {
+        "text-hazard-high"
+    } else {
+        "text-hazard-low"
+    };
+
     MetricsTemplate {
         requests_per_second: format!("{:.3}", metrics.0.requests_per_second),
         error_rate_percent: format!("{:.3}%", error_rate),
         error_rate_class: error_rate_class.to_string(),
+        cache_hit_rate_percent: format!("{:.1}%", cache_hit_rate_percent),
+        cache_hit_rate_class: cache_hit_rate_class.to_string(),
         avg_response_time_ms: format!("{:.3} ms", metrics.0.avg_response_time_ms),
         db_queries_per_second: format!("{:.3}", metrics.0.db_queries_per_second),
         storage_used_percent: format!("{:.1}%", storage_used_percent),
@@ -449,14 +469,17 @@ pub async fn refresh_weekly_report(State(state): State<AppState>) -> impl IntoRe
     let end_date = chrono::Utc::now().date_naive();
     let start_date = end_date - chrono::Duration::days(7);
 
-    let summary =
-        match ReportRepository::get_weekly_summary(&state.db_pool, start_date, end_date).await {
-            Ok(s) => s,
-            Err(e) => {
-                error!("Weekly report query failed: {}", e);
-                Default::default()
-            }
-        };
+    let summary = match state
+        .dashboard_cache
+        .get_weekly_summary(&state.db_pool, start_date, end_date)
+        .await
+    {
+        Ok(s) => s,
+        Err(e) => {
+            error!("Weekly report query failed: {}", e);
+            Arc::new(Default::default())
+        }
+    };
 
     let notable =
         |approach: &Option<crate::database::report::NotableApproach>,
@@ -503,13 +526,13 @@ mod dashboard_tests {
         // Test that health response has correct structure
         let response = HealthResponse {
             status: "healthy".to_string(),
-            version: "2.1.0".to_string(),
+            version: env!("CARGO_PKG_VERSION").to_string(),
             timestamp: chrono::Utc::now(),
             database_connected: true,
         };
 
         assert_eq!(response.status, "healthy");
-        assert_eq!(response.version, "2.1.0");
+        assert_eq!(response.version, env!("CARGO_PKG_VERSION"));
         assert!(response.database_connected);
     }
 
